@@ -1,0 +1,22 @@
+{
+  "name": "threejs-archive",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "~5.8.3",
+    "vite": "^5.4.19"
+  },
+  "dependencies": {
+    "execa": "^8.0.1",
+    "node-fetch": "^3.3.2",
+    "puppeteer": "^22.15.0",
+    "sharp": "^0.33.5",
+    "three": "^0.178.0"
+  }
+}

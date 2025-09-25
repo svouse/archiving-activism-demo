@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Archiving Activism — Demo</title>
+</head>
+<body>
+<header class="site-header">
+    <div class="brand">
+        <a href="/pages/home.html" style="color:inherit; text-decoration:none;">
+            ARCHIVING ACTIVISM
+        </a>
+    </div>
+    <nav>
+        <a href="/pages/home.html">HOME</a>
+        <a href="/pages/about-archiving-how-why.html">ABOUT</a>
+        <a href="/pages/freedom-schools.html">FREEDOM SCHOOLS</a>
+        <a href="/pages/about-the-project.html">PROJECT TEAM</a>
+        <a href="/pages/connect.html">CONTACT</a>
+    </nav>
+</header>
+
+<main id="app">
+    <!-- 3D interaction hint -->
+    <div id="hint" class="hint">Drag to rotate • Scroll to zoom</div>
+
+    <!-- Hover tooltip -->
+    <div id="hoverTip" class="hover-tip" style="display:none;"></div>
+
+    <!-- Bottom info card -->
+    <section id="infoCard" class="info-card" style="display:none;">
+        <div class="info-card__header">BRISCOE CENTER</div>
+        <div class="info-card__body">
+            <img id="infoThumb" class="info-card__thumb" alt="" />
+            <div class="info-card__grid">
+                <div><span class="label">Item Description:</span> <span id="infoTitle"></span></div>
+                <div><span class="label">Collection:</span> <span id="infoRepo">Briscoe Center</span></div>
+                <div><span class="label">Date:</span> <span id="infoYear">—</span></div>
+                <div><span class="label">Context:</span> <span id="infoContext">UT</span></div>
+                <div><span class="label">Media Type:</span> Image</div>
+
+                <!-- NEW: Tag section -->
+                <div class="tag-row">
+                    <span class="label">Tags:</span>
+                    <div id="tagChips" class="chips"></div>
+                </div>
+
+                <div class="spacer"></div>
+                <a id="infoLink" target="_blank" class="btn">Open Document</a>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
