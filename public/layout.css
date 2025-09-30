@@ -1,0 +1,595 @@
+/* src/layout.css */
+
+/* --- Container --- */
+.container {
+    max-width: 1900px;
+    margin: 40px auto;
+    padding: 0 100px;
+}
+
+/* --- Header --- */
+
+
+.site-header .brand {
+    font-weight: 900;
+    letter-spacing: 1px;
+    font-size: 36px;
+}
+
+.site-header .brand a {
+    color: var(--coral);
+    text-decoration: none;
+}
+.site-header .brand a:visited,
+.site-header .brand a:hover,
+.site-header .brand a:active {
+    color: var(--coral); /* lock coral in all states */
+    text-decoration: none;
+}
+
+.site-header nav {
+    display: flex;
+    align-items: end;
+    gap: 20px; /* space between nav links only */
+}
+
+.site-header nav a {
+    color: #d4d4d4;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 16px;
+}
+.site-header nav a:hover {
+    color: coral;
+}
+
+/* Brand link: lock styling */
+.site-header .brand a {
+    display: inline-block;
+    margin-right: 40px; /* push nav away consistently */
+    font-weight: 900;
+    font-size: 36px;
+    letter-spacing: 1px;
+    color: var(--coral);
+    text-decoration: none;
+}
+
+.site-header .brand a:visited,
+.site-header .brand a:hover,
+.site-header .brand a:active {
+    color: var(--coral);
+    text-decoration: none;
+}
+
+
+/* --- Typography --- */
+h1 {
+    margin: 0 0 10px 0;
+    font-size: 40px;
+    color: var(--tan);
+}
+
+h2 {
+    margin: 32px 0 12px;
+    font-size: 28px;
+    color: #fff;
+}
+
+.lede {
+    color: #d4d4d4;
+    font-weight: 190; /* Lighter font weight */
+    letter-spacing: 0.07em;  /* Adjust spacing */
+    line-height: 1.5;
+    font-size: 20px;
+}
+
+p {
+    text-align: justify;
+}
+
+/* --- Utility boxes --- */
+.imgbox {
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 12px;
+    width: 100%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+}
+
+.hero-split {
+    display: grid;
+    grid-template-columns: 1.1fr .9fr;
+    gap: 28px;
+    margin-top: 16px;
+    align-items: start;
+}
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    align-items: start;
+    margin-top: 20px;
+}
+
+/* --- Cards --- */
+.cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 18px;
+}
+
+.card {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 14px;
+    padding: 16px;
+    text-decoration: none;
+    color: inherit;
+}
+
+.card-text {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 14px;
+    padding: 16px;
+    text-decoration: none;
+    color: inherit;
+}
+
+.card h3 {
+    margin: 0 0 8px 0;
+}
+
+.card:hover {
+    border-color: var(--coral);
+    cursor: pointer;
+}
+
+/* --- Pills / Chips --- */
+.pill {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid #D2C7B1;
+    color: #D2C7B1;
+    margin-right: 8px;
+    font-weight: 700;
+    font-size: 12px;
+}
+
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.chip {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 12px;
+    background: #2A170E;
+    color: #D2C7B1;
+    border: 1px solid #D2C7B1;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+
+/* --- Links --- */
+.links-row a {
+    margin-right: 16px;
+    font-weight: 800;
+}
+
+a.lightbox-link {
+    text-decoration: underline;
+    font-weight: 700;
+}
+
+/* --- Buttons --- */
+.cta {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: #fff;
+    color: #111;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 800;
+}
+
+/* --- Gallery (Home page) --- */
+.gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.gallery img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 8px;
+    opacity: 0.6;
+    transition: opacity .3s, border-color .3s;
+    border: 2px solid #222;
+}
+
+.gallery img.active {
+    opacity: 1;
+    border-color: var(--coral);
+}
+
+/* --- Footer --- */
+.site-footer {
+    background-color: rgba(var(--coral), 0.2);
+    border-top: 1px solid #222;
+    margin-left: 5%;
+}
+
+.footer-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: inline-flex;
+    align-items: center;
+}
+
+.footer-inner p {
+    margin: 0 0 8px 0;
+    font-weight: 700;
+}
+
+.footer-inner .funders {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.footer-inner .funders img {
+    height: 28px;
+    opacity: .9;
+}
+
+.footer-inner .copyright {
+    margin: 16px 0 0 0;
+    font-size: 12px;
+    opacity: .8;
+}
+
+/* --- Link Row (Home) --- */
+.link-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+/* --- Home Hero Split --- */
+.hero {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr; /* text wider than gallery */
+    gap: 40px;
+    align-items: start;
+    margin-top: 40px;
+}
+
+/* --- About Layout --- */
+.side-images {
+    display: grid;
+    grid-template-columns: 0.9fr 1.1fr; /* images left, text right */
+    gap: 40px;
+    margin-top: 40px;
+}
+
+.side-images .imgbox {
+    height: 220px; /* smaller than homepage carousel */
+}
+
+.section {
+    margin-top: 40px;
+}
+
+/* layout.css */
+#app {
+    position: relative;
+    width: 100%;
+    height: 100vh; /* takes the full viewport height */
+    overflow: hidden;
+}
+
+.site-footer {
+    position: relative; /* ensure it flows after #app */
+    z-index: 5; /* above background if needed */
+}
+
+/* Ensure the container shows even if images fail to load */
+.carousel-container { min-height: 280px; }
+
+/* Give blank images a visible block so the track has height while paths are fixed */
+.carousel-track img {
+    background: #111;           /* fallback block if image 404s */
+    min-height: 260px;          /* matches intended height */
+}
+
+/* --- Freedom Schools: Old-site infinite carousel --- */
+.fs-carousel.carousel-container {
+    position: relative;
+    border: 1px solid #222;
+    border-radius: 12px;
+    background: #0c0c0c;
+    user-select: none;
+    padding: 10px; /* breathing room around the viewport */
+    min-height: 280px; /* ensures a visible box before images load */
+}
+
+.fs-carousel .carousel-viewport {
+    position: relative;
+    overflow: hidden;              /* hide the overflow; track will translate */
+    border-radius: 10px;
+}
+
+.fs-carousel .carousel-track {
+    display: inline-flex;          /* we translate this strip */
+    align-items: center;
+    gap: 10px;
+    will-change: transform;        /* smoother GPU compositing */
+}
+
+.fs-carousel .carousel-track img {
+    display: block;                /* prevents inline-gap from img */
+    height: 260px;
+    width: auto;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid #222;
+    background: #111;              /* visible even if an image 404s */
+}
+
+/* Hover zones for speed control */
+.fs-carousel .scroll-zone {
+    position: absolute;
+    top: 10px;                     /* align with container padding */
+    bottom: 10px;
+    width: 72px;
+    z-index: 3;
+}
+.fs-carousel .left-zone  { left: 10px; }
+.fs-carousel .right-zone { right: 10px; }
+
+/* Subtle edge fades */
+.fs-carousel.carousel-container::before,
+.fs-carousel.carousel-container::after {
+    content: "";
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    width: 72px;
+    pointer-events: none;
+    z-index: 2;
+}
+.fs-carousel.carousel-container::before {
+    left: 10px;
+    background: linear-gradient(90deg, rgba(15,15,15,0.85), rgba(15,15,15,0));
+}
+.fs-carousel.carousel-container::after {
+    right: 10px;
+    background: linear-gradient(270deg, rgba(15,15,15,0.85), rgba(15,15,15,0));
+}
+
+/* Responsive nudge on narrow screens */
+@media (max-width: 700px) {
+    .fs-carousel .carousel-track img {
+        height: 200px;
+    }
+    .fs-carousel .scroll-zone { width: 56px; }
+    .fs-carousel.carousel-container::before,
+    .fs-carousel.carousel-container::after { width: 56px; }
+}
+
+/* --- About dropdown (pure CSS) --- */
+.site-header nav { position: relative; }
+
+.nav-list { display:flex; align-items:center; gap:20px; list-style:none; padding:0; margin:0; }
+.nav-item a { color:#d4d4d4; text-decoration:none; font-weight:700; font-size:16px; }
+.nav-item a:hover { color:#fff; }
+
+/* Parent with dropdown */
+.nav-item.has-dropdown { position:relative; }
+.nav-item.has-dropdown > a { display:inline-flex; align-items:center; gap:8px; }
+
+/* Panel */
+.dropdown {
+    position:absolute; top:100%; right:0;
+    background:#426A5A;
+    padding:10px; min-width:260px;
+    display:none;
+    box-shadow:0 10px 30px rgba(0,0,0,.4);
+}
+.nav-item.has-dropdown:hover .dropdown,
+.nav-item.has-dropdown:focus-within .dropdown { display:block; }
+
+/* Links in panel */
+.dropdown a {
+    display:block; padding:10px 12px; border-radius:8px; color:#d4d4d4; text-decoration:none; font-weight:800;
+}
+.dropdown a:hover { background: #2A170E; }
+
+/* Small caret */
+.caret {
+    width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent;
+    border-top:6px solid #d4d4d4; transform:translateY(1px);
+}
+.nav-item.has-dropdown:hover .caret { border-top-color:#fff; }
+
+/* Touch target spacing on narrow screens if needed later */
+@media (max-width: 720px){
+    .dropdown { right:auto; left:0; }
+}
+
+/* Forms */
+.form { background:#141414; border:1px solid #222; border-radius:14px; padding:16px; }
+.field { margin-bottom:14px; }
+.field label { display:block; font-weight:800; margin-bottom:6px; color:#fff; }
+.input, .textarea {
+    width:100%; background:#0f0f0f; color:#eee; border:1px solid #222; border-radius:10px;
+    padding:10px 12px;
+}
+.input:focus, .textarea:focus { outline:none; border-color: var(--coral); }
+.help { font-size:12px; color:#aaa; margin-top:6px; }
+.btn { display:inline-block; padding:10px 14px; background:#fff; color:#111; border-radius:8px; text-decoration:none; font-weight:800; }
+.notice { margin-top:10px; color:#D2C7B1; }
+
+/* Scene wrapper so footer never overlays canvas */
+.scene-wrap {
+    position: relative;
+    min-height: 60vh;
+    margin-top: 40px; /* space from tags/cards */
+    z-index: 0;       /* ensure it's behind header/footer, not floating */
+}
+
+/* Archives: left-stacked period cards */
+.cards--leftstack {
+    grid-template-columns: 1fr;   /* single column */
+    max-width: 420px;             /* keep it a narrow left rail */
+    margin-right: auto;           /* left-align within container */
+    row-gap: 14px;                /* a bit tighter between cards */
+}
+
+/* optional: make the first card pop slightly if desired */
+.cards--leftstack .card:first-child {
+    border-color: #222;           /* same default */
+}
+
+/* If you ever want it wider on xl screens, uncomment:
+@media (min-width: 1400px) {
+  .cards--leftstack { max-width: 520px; }
+}
+*/
+
+/* Make absolutely sure the modal is above WebGL */
+.info-card {
+    position: fixed;
+    z-index: 10000;
+    pointer-events: auto;
+}
+canvas {
+    z-index: 0;
+}
+
+.cards--leftstack .card.is-active {
+    outline: 2px solid #ffead6;
+    box-shadow: 0 0 0 3px rgba(255, 234, 214, 0.35) inset;
+}
+
+/* Canvas stays behind everything */
+.webgl-canvas {
+    position: fixed;   /* or absolute if you prefer inside #app */
+    inset: 0;
+    z-index: 0;
+}
+
+/* Left stack buttons sit above and are clickable */
+.cards--leftstack {
+    position: fixed;   /* keeps them pinned */
+    left: 24px;
+    top: 120px;
+    z-index: 20;
+    pointer-events: auto;
+}
+
+/* Make sure these overlays never swallow clicks */
+.hint,
+.hover-tip {
+    pointer-events: none;
+}
+
+/* Info card on top of canvas but below the buttons (tweak if you like) */
+.info-card {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 15;
+}
+
+/* --- Timeline chips layout --- */
+.timeline-bar {
+    position: relative;
+    z-index: 5;                  /* above the WebGL canvas */
+    display: flex;
+    justify-content: center;
+    padding-top: 12px;           /* “move down a bit” from the title */
+    margin-bottom: 12px;         /* breathing room above canvas */
+}
+
+.timeline-cards {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;             /* wrap on small screens */
+    align-items: center;
+}
+
+/* --- Chip base --- */
+.timeline-cards .chip {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 14px;
+    border-radius: 999px;
+    text-decoration: none;
+    color: #ffead6;
+    background: rgba(24, 24, 24, 0.72);
+    border: 1px solid rgba(255, 234, 214, 0.18);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+    transition: transform 150ms ease, background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+    backdrop-filter: blur(6px);
+    will-change: transform;
+}
+
+.timeline-cards .chip:hover {
+    transform: translateY(-1px);
+    border-color: rgba(255, 234, 214, 0.35);
+    box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+}
+
+/* title + subline */
+.timeline-cards .chip__title {
+    font-weight: 700;
+    line-height: 1.1;
+    font-size: 0.95rem;
+}
+
+.timeline-cards .chip__sub {
+    opacity: 0.8;
+    font-size: 0.82rem;
+    line-height: 1;
+}
+
+/* --- Active states in our palette --- */
+.timeline-cards .chip.is-active[data-period="precursors"] {
+    background: linear-gradient(180deg, #B284BE 0%, #7f5a86 100%);  /* Public Education hue */
+    border-color: rgba(255,255,255,0.25);
+}
+.timeline-cards .chip.is-active[data-period="thick"] {
+    background: linear-gradient(180deg, #EF6F6C 0%, #b4514f 100%);  /* Direct Activism hue */
+    border-color: rgba(255,255,255,0.25);
+}
+.timeline-cards .chip.is-active[data-period="today"] {
+    background: linear-gradient(180deg, #7CA982 0%, #5a7c60 100%);  /* Univ.-Based Politics hue */
+    border-color: rgba(255,255,255,0.25);
+}
+
+/* Make sure chips remain clickable above canvas */
+.timeline-bar, .timeline-cards .chip { pointer-events: auto; }
+
+
+
+
+
+
+
+

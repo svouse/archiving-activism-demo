@@ -1,4 +1,3 @@
-import './style.css';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
@@ -246,13 +245,23 @@ async function init() {
    Data loading + mapping
    =========================== */
 async function loadArchiveData() {
+    const base = import.meta.env.BASE_URL || '/'; // Vite sets this to '/'
+
+    const getJSON = async (path: string) => {
+        const res = await fetch(base + path);
+        if (!res.ok) throw new Error(`Failed to load ${path}: ${res.status}`);
+        return res.json();
+    };
+
     const [cloud, byId] = await Promise.all([
-        fetch(new URL('../public/data/cloud.resources.json', import.meta.url)).then((r) => r.json()),
-        fetch(new URL('../public/data/resources.byId.json', import.meta.url)).then((r) => r.json()),
+        getJSON('data/cloud.resources.json'),
+        getJSON('data/resources.byId.json'),
     ]);
+
     CLOUD = cloud as CloudItem[];
     BY_ID = byId as Record<string, FullRecord>;
 }
+
 
 // Base search state
 let searchQuery = "";
@@ -711,3 +720,15 @@ function animate() {
 function hideHint() {
     hintEl?.classList.add('hint--hide');
 }
+
+const path = location.pathname;
+const isSearch =
+    path.endsWith('/search.html') || path.includes('/pages/search.html');
+
+if (isSearch) {
+    (async () => {
+        const mod = await import('./search.ts');
+        await mod.initSearch();
+    })();
+}
+

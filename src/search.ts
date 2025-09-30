@@ -30,8 +30,8 @@ type CloudItem = {
 
 type Doc = {
     id: string | number;
-    title: string;       // cleaned display title
-    rawTitle: string;    // original title if present
+    title: string;
+    rawTitle: string;
     year?: number | null;
     url?: string | null;
     tags: string[];
@@ -40,7 +40,7 @@ type Doc = {
     description?: string | null;
 };
 
-// ---------- Era ranges (match archive page) ----------
+// ---------- Era ranges ----------
 const PERIODS: Record<'precursors' | 'thick' | 'today', [number, number]> = {
     precursors: [1940, 1959],
     thick: [1960, 1989],
@@ -49,6 +49,8 @@ const PERIODS: Record<'precursors' | 'thick' | 'today', [number, number]> = {
 type EraKey = keyof typeof PERIODS;
 
 // ---------- Utilities ----------
+const base = import.meta.env.BASE_URL || '/';
+
 function numericYear(y: unknown): number | null {
     if (typeof y === 'number' && Number.isFinite(y)) return y;
     if (typeof y === 'string') {
@@ -58,7 +60,6 @@ function numericYear(y: unknown): number | null {
     return null;
 }
 
-// Remove first 3 underscore-delimited parts and the extension; tidy spaces
 function cleanFileDisplay(name: string): string {
     const base = name.split('/').pop() || name;
     const noExt = base.replace(/\.[a-z0-9]+$/i, '');
@@ -67,8 +68,6 @@ function cleanFileDisplay(name: string): string {
     return kept.replace(/\s+/g, ' ').trim();
 }
 
-// Turn tags into a clean string[] from arrays or comma/semicolon strings.
-// Falls back to topics if tags are empty. Filters out long/sentence-y values.
 function coerceTags(recTags: any, itemTags: any, topics?: any): string[] {
     const out: string[] = [];
     const pushAny = (val: any) => {
@@ -95,33 +94,50 @@ function coerceTags(recTags: any, itemTags: any, topics?: any): string[] {
     return cleaned;
 }
 
-// ---------- Data ----------
+// ---------- Data / State ----------
 let CLOUD: CloudItem[] = [];
 let BY_ID: Record<string, FullRecord> = {};
 let DOCS: Doc[] = [];
 
-// ---------- State ----------
 let q = '';
 const activeTags = new Set<string>();
 let allTags: string[] = [];
 let activeEra: EraKey | null = null;
 
-// ---------- DOM ----------
+// ---------- DOM (queried at init time) ----------
 const els = {
-    q: document.getElementById('q') as HTMLInputElement,
-    clear: document.getElementById('clear') as HTMLButtonElement,
-    tagList: document.getElementById('tagList') as HTMLDivElement,
-    meta: document.getElementById('meta') as HTMLDivElement,
-    results: document.getElementById('results') as HTMLDivElement,
-    sort: document.getElementById('sort') as HTMLSelectElement,
-    eraChips: document.getElementById('eraChips') as HTMLDivElement,
+    q: null as HTMLInputElement | null,
+    clear: null as HTMLButtonElement | null,
+    tagList: null as HTMLDivElement | null,
+    meta: null as HTMLDivElement | null,
+    results: null as HTMLDivElement | null,
+    sort: null as HTMLSelectElement | null,
+    eraChips: null as HTMLDivElement | null,
 };
 
-// ---------- Boot ----------
-init();
+// ---------- Public init (called from main.ts) ----------
+export async function initSearch() {
+    // Get elements (IDs must exist in search.html)
+    els.q       = document.getElementById('q') as HTMLInputElement | null;
+    els.clear   = document.getElementById('clear') as HTMLButtonElement | null;
+    els.tagList = document.getElementById('tagList') as HTMLDivElement | null;
+    els.meta    = document.getElementById('meta') as HTMLDivElement | null;
+    els.results = document.getElementById('results') as HTMLDivElement | null;
+    els.sort    = document.getElementById('sort') as HTMLSelectElement | null;
+    els.eraChips= document.getElementById('eraChips') as HTMLDivElement | null;
 
-async function init() {
-    await loadData();
+    // Hard guard: if core elements missing, don’t continue
+    if (!els.results || !els.q || !els.sort || !els.tagList) {
+        console.warn('[search] Missing required DOM (#results, #q, #sort, #tagList). Check search.html IDs.');
+        return;
+    }
+
+    // Load data
+    const { cloud, byId } = await loadSearchData();
+    CLOUD = cloud;
+    BY_ID = byId;
+
+    // Build model + UI
     DOCS = buildDocs(CLOUD, BY_ID);
     allTags = buildTagSet(DOCS);
     renderTagList(allTags);
@@ -131,15 +147,16 @@ async function init() {
     applyFilters();
 }
 
-async function loadData() {
+// ---------- Data loader (from /public/data) ----------
+async function loadSearchData() {
     const [cloud, byId] = await Promise.all([
-        fetch(new URL('../public/data/cloud.resources.json', import.meta.url)).then(r => r.json()),
-        fetch(new URL('../public/data/resources.byId.json', import.meta.url)).then(r => r.json()),
+        fetch(base + 'data/cloud.resources.json').then(r => r.json()),
+        fetch(base + 'data/resources.byId.json').then(r => r.json()),
     ]);
-    CLOUD = cloud as CloudItem[];
-    BY_ID = byId as Record<string, FullRecord>;
+    return { cloud, byId };
 }
 
+// ---------- Build docs ----------
 function buildDocs(cloud: CloudItem[], byId: Record<string, FullRecord>): Doc[] {
     return cloud.map(it => {
         const rec = byId[String(it.id)];
@@ -170,34 +187,36 @@ function buildTagSet(docs: Doc[]): string[] {
 
 // ---------- UI wiring ----------
 function bindUI() {
-    els.q.addEventListener('input', () => { q = els.q.value; applyFilters(); });
-    els.clear.addEventListener('click', () => { q = ''; els.q.value = ''; applyFilters(); });
-    els.sort.addEventListener('change', applyFilters);
+    els.q!.addEventListener('input', () => { q = els.q!.value; applyFilters(); });
+    els.clear && els.clear.addEventListener('click', () => { q = ''; els.q!.value = ''; applyFilters(); });
+    els.sort!.addEventListener('change', applyFilters);
 }
 
 function readParams() {
     const p = new URLSearchParams(location.search);
-    const pq = p.get('q'); if (pq){ q = pq; els.q.value = pq; }
+    const pq = p.get('q'); if (pq){ q = pq; els.q!.value = pq; }
     const ptags = (p.get('tags') || '').split(',').filter(Boolean);
     ptags.forEach(t => activeTags.add(t));
-    const s = p.get('sort'); if (s && ['relevance','year-desc','year-asc','title-asc'].includes(s)) els.sort.value = s;
+    const s = p.get('sort');
+    if (s && ['relevance','year-desc','year-asc','title-asc'].includes(s)) els.sort!.value = s as any;
     const era = p.get('era') as EraKey | null;
     if (era && PERIODS[era]) activeEra = era;
 }
 
 function syncParams(list: Doc[]) {
+    if (!els.meta) return;
     const p = new URLSearchParams();
     if (q) p.set('q', q);
     if (activeTags.size) p.set('tags', Array.from(activeTags).join(','));
     if (activeEra) p.set('era', activeEra);
-    p.set('sort', els.sort.value);
+    p.set('sort', els.sort!.value);
     history.replaceState({}, '', `${location.pathname}?${p}`);
     els.meta.textContent = `${list.length} result${list.length === 1 ? '' : 's'}`;
 }
 
 // ---------- Renderers ----------
 function renderTagList(tags: string[]) {
-    els.tagList.innerHTML = '';
+    els.tagList!.innerHTML = '';
     tags.forEach(t => {
         const id = `tag-${t.replace(/\W+/g, '-')}`;
         const label = document.createElement('label');
@@ -214,7 +233,7 @@ function renderTagList(tags: string[]) {
         span.textContent = t;
         label.appendChild(box);
         label.appendChild(span);
-        els.tagList.appendChild(label);
+        els.tagList!.appendChild(label);
     });
 }
 
@@ -236,14 +255,8 @@ function renderEraChips() {
         btn.setAttribute('data-era', def.key);
         btn.innerHTML = `<span>${def.title}</span><span class="sub">${def.sub}</span>`;
         btn.addEventListener('click', () => {
-            // toggle behavior
-            if (activeEra === def.key) {
-                activeEra = null;
-            } else {
-                activeEra = def.key;
-            }
-            // update chip styles
-            Array.from(els.eraChips.querySelectorAll('.chip')).forEach(el => el.classList.remove('is-active'));
+            activeEra = (activeEra === def.key) ? null : def.key;
+            Array.from(els.eraChips!.querySelectorAll('.chip')).forEach(el => el.classList.remove('is-active'));
             if (activeEra) btn.classList.add('is-active');
             applyFilters();
         });
@@ -296,7 +309,7 @@ function applyFilters() {
         matchesEra(d)
     );
 
-    const sort = els.sort.value;
+    const sort = els.sort!.value;
     filtered.sort((a, b) => {
         if (sort === 'year-desc') return (numericYear(b.year) ?? -1) - (numericYear(a.year) ?? -1);
         if (sort === 'year-asc')  return (numericYear(a.year) ??  1) - (numericYear(b.year) ??  1);
@@ -308,9 +321,8 @@ function applyFilters() {
     renderResults(filtered);
 }
 
-// ---------- Results ----------
 function renderResults(list: Doc[]) {
-    els.results.innerHTML = '';
+    els.results!.innerHTML = '';
     list.forEach(d => {
         const card = document.createElement('article');
         card.className = 'card';
@@ -346,6 +358,6 @@ function renderResults(list: Doc[]) {
         card.appendChild(img);
         card.appendChild(tags);
         card.appendChild(link);
-        els.results.appendChild(card);
+        els.results!.appendChild(card);
     });
 }
