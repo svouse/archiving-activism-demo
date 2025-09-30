@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <base href="/" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Archives — Archiving Activism</title>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/layout.css" />
+</head>
+<body>
+
+<header class="site-header">
+    <div class="brand"><a href="/../index.html">ARCHIVING ACTIVISM</a></div>
+    <nav aria-label="Primary">
+        <ul class="nav-list">
+            <li class="nav-item has-dropdown">
+                <a href="./about-archiving-how-why.html" aria-haspopup="true" aria-expanded="false">
+                    ABOUT <span class="caret" aria-hidden="true"></span>
+                </a>
+                <div class="dropdown" role="menu" aria-label="About menu">
+                    <a href="/./pages/about-archiving-how-why.html" role="menuitem">Archiving: Why &amp; How</a>
+                    <a href="/./pages/about-activism-who-what.html" role="menuitem">Activism: Who &amp; What</a>
+                    <a href="/./pages/about-history-when-where.html" role="menuitem">History: When &amp; Where</a>
+                    <a href="/./pages/about-the-project.html" role="menuitem">The Project</a>
+                </div>
+            </li>
+            <li class="nav-item has-dropdown">
+            <a href="/./pages/archives.html">ARCHIVES <span class="caret" aria-hidden="true"></span></a>
+                <div class="dropdown" role="menu" aria-label="Archive menu">
+                    <a href="/./pages/search.html" role="menuitem">Search</a>
+                </div>
+            </li>
+            <li class="nav-item"><a href="/./pages/freedom-schools.html">FREEDOM SCHOOLS</a></li>
+            <li class="nav-item"><a href="/./pages/resources-tools.html">RESOURCES & TOOLS</a></li>
+            <li class="nav-item"><a href="/./pages/connect.html">CONNECT</a></li>
+        </ul>
+    </nav>
+</header>
+
+<main>
+<section class="container">
+
+  <!-- Timeline + Search toolbar -->
+  <h1 class="page-title">Archives</h1>
+  <div class="archive-toolbar">
+    <div id="searchPanel" class="search-panel">
+      <input id="searchInput" type="search" placeholder="Search titles or tags" autocomplete="off" />
+      <button id="searchClear" class="search-clear" aria-label="Clear search">✕</button>
+    </div>
+
+    <nav class="timeline-cards" aria-label="Time period filters">
+      <a class="chip" data-period="precursors" href="#precursors">
+        <span class="chip__title">Precursors</span>
+        <span class="chip__sub">1940s–1950s</span>
+      </a>
+      <a class="chip" data-period="thick" href="#thick">
+        <span class="chip__title">In the Thick of the Struggle</span>
+        <span class="chip__sub">1960s–1980s</span>
+      </a>
+      <a class="chip" data-period="today" href="#today">
+        <span class="chip__title">Student Organizing Today</span>
+        <span class="chip__sub">1990s–present</span>
+      </a>
+    </nav>
+  </div>
+
+</section>
+
+
+  <!-- 3D scene — wrapped to keep footer off the canvas -->
+  <section class="scene-wrap">
+    <div id="app">
+      <div id="hint" class="hint">Drag to rotate • Scroll to zoom</div>
+      <div id="hoverTip" class="hover-tip" style="display:none;"></div>
+
+      <section id="infoCard" class="info-card" style="display:none;">
+        <div class="info-card__header">BRISCOE CENTER</div>
+        <div class="info-card__body">
+          <img id="infoThumb" class="info-card__thumb" alt="" />
+          <div class="info-card__grid">
+            <div><span class="label">Item Description:</span> <span id="infoTitle"></span></div>
+            <div><span class="label">Collection:</span> <span id="infoRepo">Briscoe Center</span></div>
+            <div><span class="label">Date:</span> <span id="infoYear">—</span></div>
+            <div><span class="label">Context:</span> <span id="infoContext">UT</span></div>
+            <div><span class="label">Media Type:</span> Image</div>
+            <div class="tag-row">
+              <span class="label">Tags:</span>
+              <div id="tagChips" class="chips"></div>
+            </div>
+            <div class="spacer"></div>
+            <a id="infoLink" target="_blank" class="btn">Open Document</a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </section>
+</main>
+
+
+<footer class="site-footer">
+  <div >
+    <p>Created with generous funding from:</p>
+    <div class="logos">
+      <img alt="AADS" src="../img/logo1.png" />
+      <img alt="CCI" src="../img/logo2.png" />
+      <img alt="NHPRC" src="../img/logo3.png" />
+    </div>
+
+    <p class="copyright">© 2025 Archiving Activism. All Rights Reserved.</p>
+  </div>
+  </div>
+</footer>
+
+<!-- three.js experience -->
+<script type="module" src="/assets/app.js"></script>
+</body>
+</html>

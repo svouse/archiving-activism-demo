@@ -1,15 +1,16 @@
 <!doctype html>
 <html lang="en">
 <head>
+    <base href="/" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Archiving Activism — Home</title>
-    <link rel="stylesheet" href="../src/style.css" />
-    <link rel="stylesheet" href="../src/layout.css" />
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/layout.css" />
 </head>
 <body>
 <header class="site-header">
-    <div class="brand"><a href="../index.html">ARCHIVING ACTIVISM</a></div>
+    <div class="brand"><a href="/../index.html">ARCHIVING ACTIVISM</a></div>
     <nav aria-label="Primary">
         <ul class="nav-list">
             <li class="nav-item has-dropdown">
@@ -17,16 +18,21 @@
                     ABOUT <span class="caret" aria-hidden="true"></span>
                 </a>
                 <div class="dropdown" role="menu" aria-label="About menu">
-                    <a href="./pages/about-archiving-how-why.html" role="menuitem">Archiving: Why &amp; How</a>
-                    <a href="./pages/about-activism-who-what.html" role="menuitem">Activism: Who &amp; What</a>
-                    <a href="./pages/about-history-when-where.html" role="menuitem">History: When &amp; Where</a>
-                    <a href="./pages/about-the-project.html" role="menuitem">The Project</a>
+                    <a href="/./pages/about-archiving-how-why.html" role="menuitem">Archiving: Why &amp; How</a>
+                    <a href="/./pages/about-activism-who-what.html" role="menuitem">Activism: Who &amp; What</a>
+                    <a href="/./pages/about-history-when-where.html" role="menuitem">History: When &amp; Where</a>
+                    <a href="/./pages/about-the-project.html" role="menuitem">The Project</a>
                 </div>
             </li>
-            <li class="nav-item"><a href="./pages/archives.html">ARCHIVES</a></li>
-            <li class="nav-item"><a href="./pages/freedom-schools.html">FREEDOM SCHOOLS</a></li>
-            <li class="nav-item"><a href="./pages/resources-tools.html">RESOURCES & TOOLS</a></li>
-            <li class="nav-item"><a href="./pages/connect.html">CONNECT</a></li>
+            <li class="nav-item has-dropdown">
+            <a href="/./pages/archives.html">ARCHIVES <span class="caret" aria-hidden="true"></span></a>
+                <div class="dropdown" role="menu" aria-label="Archive menu">
+                    <a href="/./pages/search.html" role="menuitem">Search</a>
+                </div>
+            </li>
+            <li class="nav-item"><a href="/./pages/freedom-schools.html">FREEDOM SCHOOLS</a></li>
+            <li class="nav-item"><a href="/./pages/resources-tools.html">RESOURCES & TOOLS</a></li>
+            <li class="nav-item"><a href="/./pages/connect.html">CONNECT</a></li>
         </ul>
     </nav>
 </header>
@@ -77,9 +83,9 @@
     <div >
         <p>Created with generous funding from:</p>
         <div class="logos">
-            <img alt="AADS" src="/public/img/logo1.png" />
-            <img alt="CCI" src="/public/img/logo2.png" />
-            <img alt="NHPRC" src="/public/img/logo3.png" />
+            <img alt="AADS" src="/img/logo1.png" />
+            <img alt="CCI" src="/img/logo2.png" />
+            <img alt="NHPRC" src="/img/logo3.png" />
         </div>
 
         <p class="copyright">© 2025 Archiving Activism. All Rights Reserved.</p>
@@ -100,5 +106,6 @@
         }, 4500);
     })();
 </script>
+<script type="module" src="/src/main.ts"></script>
 </body>
 </html>
