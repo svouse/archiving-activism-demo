@@ -8,15 +8,7 @@
 }
 
 /* --- Header --- */
-.site-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between; /* pushes brand left, nav right */
-    padding: 16px 24px;
-    background: #2E6466;
-    border-bottom: 1px solid #222;
-    width: 100%;
-}
+
 
 .site-header .brand {
     font-weight: 900;
@@ -236,16 +228,16 @@ a.lightbox-link {
 
 /* --- Footer --- */
 .site-footer {
-    color: var(--coral);
     background-color: rgba(var(--coral), 0.2);
     border-top: 1px solid #222;
-    margin-top: 40px;
-    margin-left: -13%;
+    margin-left: 5%;
 }
 
 .footer-inner {
     max-width: 1100px;
     margin: 0 auto;
+    display: inline-flex;
+    align-items: center;
 }
 
 .footer-inner p {
@@ -594,9 +586,7 @@ canvas {
 /* Make sure chips remain clickable above canvas */
 .timeline-bar, .timeline-cards .chip { pointer-events: auto; }
 
-.history {
-    border: 8px solid coral;
-}
+
 
 
 

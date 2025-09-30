@@ -7,29 +7,36 @@
     <link rel="stylesheet" href="../src/layout.css" />
 </head>
 <body>
-<header class="site-header">
-  <div class="brand"><a href="../index.html">ARCHIVING ACTIVISM</a></div>
-  <nav aria-label="Primary">
-    <ul class="nav-list">
-      <li class="nav-item has-dropdown">
-        <a href="./about-archiving-how-why.html" aria-haspopup="true" aria-expanded="false">
-          ABOUT <span class="caret" aria-hidden="true"></span>
-        </a>
-        <div class="dropdown" role="menu" aria-label="About menu">
-          <a href="./about-archiving-how-why.html" role="menuitem">Archiving: Why &amp; How</a>
-          <a href="./about-activism-who-what.html" role="menuitem">Activism: Who &amp; What</a>
-          <a href="./about-history-when-where.html" role="menuitem">History: When &amp; Where</a>
-          <a href="./about-the-project.html" role="menuitem">The Project</a>
-        </div>
-      </li>
-      <li class="nav-item"><a href="./archives.html">ARCHIVES</a></li>
-      <li class="nav-item"><a href="./freedom-schools.html">FREEDOM SCHOOLS</a></li>
+  <!-- Header -->
+  <header class="site-header">
+    <div class="brand"><a href="../index.html">ARCHIVING ACTIVISM</a></div>
+    <nav aria-label="Primary">
+      <ul class="nav-list">
+        <li class="nav-item has-dropdown">
+          <a href="./about-archiving-how-why.html" aria-haspopup="true" aria-expanded="false">
+            ABOUT <span class="caret" aria-hidden="true"></span>
+          </a>
+          <div class="dropdown" role="menu" aria-label="About menu">
+            <a href="./about-archiving-how-why.html" role="menuitem">Archiving: Why &amp; How</a>
+            <a href="./about-activism-who-what.html" role="menuitem">Activism: Who &amp; What</a>
+            <a href="./about-history-when-where.html" role="menuitem">History: When &amp; Where</a>
+            <a href="./about-the-project.html" role="menuitem">The Project</a>
+          </div>
+        </li>
+        <li class="nav-item has-dropdown">
+          <a href="./archives.html" aria-current="page">ARCHIVES<span class="caret" aria-hidden="true"></span></a>
+          <div class="dropdown" role="menu" aria-label="Archive menu">
+            <a href="./search.html" role="menuitem">Search</a>
+            <a href="./archives.html" role="menuitem">Explore</a>
+          </div>
+        </li>
+        <li class="nav-item"><a href="./freedom-schools.html">FREEDOM SCHOOLS</a></li>
 
-      <li class="nav-item"><a href="./resources-tools.html">RESOURCES &amp; TOOLS</a></li>
-      <li class="nav-item"><a href="./connect.html">CONNECT</a></li>
-    </ul>
-  </nav>
-</header>
+        <li class="nav-item"><a href="./resources-tools.html">RESOURCES &amp; TOOLS</a></li>
+        <li class="nav-item"><a href="./connect.html">CONNECT</a></li>
+      </ul>
+    </nav>
+  </header>
 
 
   <main class="history">
@@ -60,16 +67,18 @@
     </section>
   </main>
 
-  <footer style="padding:24px; border-top:1px solid #222; background:#0F0F0F; color:#d4d4d4; margin-top:40px">
-    <div style="max-width:1100px; margin:0 auto">
-      <p style="margin:0 0 8px 0; font-weight:700;">Created with generous funding from:</p>
-      <div style="display:flex; gap:20px; align-items:center; flex-wrap:wrap">
-        <img alt="AADS" src="../public/test.svg" style="height:28px; opacity:.9" />
-        <img alt="CCI"  src="../public/test.svg" style="height:28px; opacity:.9" />
-        <a href="https://www.archives.gov/nhprc" target="_blank" rel="noopener"><img alt="NHPRC" src="../public/test.svg" style="height:28px; opacity:.9" /></a>
-      </div>
-      <p style="margin:16px 0 0 0; font-size:12px; opacity:.8">© 2025 Archiving Activism. All Rights Reserved.</p>
+<footer class="site-footer">
+   <div >
+    <p>Created with generous funding from:</p>
+ <div class="logos">
+      <img alt="AADS" src="../public/img/logo1.png" />
+      <img alt="CCI" src="../public/img/logo2.png" />
+        <img alt="NHPRC" src="../public/img/logo3.png" />
     </div>
-  </footer>
+
+    <p class="copyright">© 2025 Archiving Activism. All Rights Reserved.</p>
+  </div>
+  </div>
+</footer>
 </body>
 </html>

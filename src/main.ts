@@ -101,61 +101,6 @@ const PERIODS: Record<'precursors' | 'thick' | 'today', [number, number]> = {
 
 let activePeriodKey: keyof typeof PERIODS | null = null;
 
-function setSpriteState(spr: SpriteWithMeta, active: boolean) {
-    const mat = spr.material as THREE.SpriteMaterial;
-    // store base scale once
-    if (!(spr as any).baseScale) {
-        (spr as any).baseScale = spr.scale.clone();
-    }
-    mat.transparent = true;
-
-    if (active) {
-        mat.opacity = 1.0;
-        // gentle pop for selected range
-        const s = (spr as any).baseScale as THREE.Vector3;
-        spr.scale.set(s.x * 1.15, s.y * 1.15, s.z);
-        // slightly warmer tint
-        mat.color.setHex(0xFFF2E0);
-    } else {
-        mat.opacity = 0.22;
-        const s = (spr as any).baseScale as THREE.Vector3;
-        spr.scale.copy(s);
-        // cool/neutral dim tint
-        mat.color.setHex(0xB0B0B0);
-    }
-}
-
-function clearHighlight() {
-    activePeriodKey = null;
-    sprites.forEach((spr) => setSpriteState(spr, true));
-    updatePeriodCardUI(null);
-}
-
-function applyHighlightForPeriod(key: keyof typeof PERIODS) {
-    activePeriodKey = key;
-    const [minY, maxY] = PERIODS[key];
-
-    sprites.forEach((spr) => {
-        const meta = (spr as any).meta as Doc | undefined;
-        const y = numericYear(meta?.year as any);
-        const inRange = y !== null && y >= minY && y <= maxY;
-        setSpriteState(spr, inRange);
-    });
-
-    updatePeriodCardUI(key);
-}
-
-// (optional) give the UI cards a selected state
-function updatePeriodCardUI(key: keyof typeof PERIODS | null) {
-    const els = Array.from(document.querySelectorAll<HTMLAnchorElement>('.cards--leftstack .card'));
-    els.forEach((el) => {
-        const h = (el.getAttribute('href') || '').replace(/^#/, '');
-        if (key && h === key) el.classList.add('is-active');
-        else el.classList.remove('is-active');
-    });
-}
-
-
 /* ===========================
    DOM
    =========================== */
@@ -221,15 +166,51 @@ async function init() {
     });
 
     buildSprites(positions, DOCS);
-    // Period buttons: #precursors, #thick, #today
-    const periodEls = Array.from(document.querySelectorAll<HTMLAnchorElement>('.cards--leftstack .card'));
+
+    // Search UI wiring
+    const searchToggle = document.getElementById('searchToggle') as HTMLButtonElement | null;
+    const searchPanel  = document.getElementById('searchPanel')  as HTMLDivElement | null;
+    const searchInput  = document.getElementById('searchInput')  as HTMLInputElement | null;
+    const searchClear  = document.getElementById('searchClear')  as HTMLButtonElement | null;
+
+    searchToggle?.addEventListener('click', () => {
+        if (!searchPanel) return;
+        const hidden = searchPanel.hasAttribute('hidden');
+        if (hidden) searchPanel.removeAttribute('hidden'); else searchPanel.setAttribute('hidden', '');
+        if (!hidden) return;
+        setTimeout(() => searchInput?.focus(), 0);
+    });
+
+    searchInput?.addEventListener('input', () => {
+        searchQuery = searchInput.value || "";
+        updateVisibility();
+    });
+
+    searchClear?.addEventListener('click', () => {
+        if (searchInput) searchInput.value = "";
+        searchQuery = "";
+        updateVisibility();
+    });
+
+// ENTER to apply (already applies on input), ESC to close the panel
+    searchInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            searchPanel?.setAttribute('hidden', '');
+            (document.activeElement as HTMLElement)?.blur();
+        }
+    });
+
+    // Period chips: #precursors, #thick, #today live in .timeline-cards
+    const periodEls = Array.from(
+        document.querySelectorAll<HTMLAnchorElement>('.timeline-cards .chip')
+    );
     periodEls.forEach((el) => {
         el.addEventListener('click', (ev) => {
             ev.preventDefault(); // don't jump the page
             const key = (el.getAttribute('href') || '').replace(/^#/, '') as keyof typeof PERIODS;
             if (!PERIODS[key]) return;
 
-            // toggle behavior: click the same card again to clear
+            // toggle behavior: click the same chip again to clear
             if (activePeriodKey === key) {
                 clearHighlight();
             } else {
@@ -238,16 +219,24 @@ async function init() {
         });
     });
 
-// also support restoring state if someone changes the hash manually
+    // Also support hash changes
     window.addEventListener('hashchange', () => {
         const key = (location.hash || '').replace(/^#/, '') as keyof typeof PERIODS;
         if (PERIODS[key]) applyHighlightForPeriod(key);
         else clearHighlight();
     });
 
-// ESC clears the filter
+    // Single ESC handler: close card else clear highlight
     window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') clearHighlight();
+        if (e.key === 'Escape') {
+            const isCardVisible = card && card.style.display !== 'none';
+            if (isCardVisible) {
+                card.style.display = 'none';
+            } else {
+                clearHighlight();
+                updatePeriodCardUI(null);
+            }
+        }
     });
 
     animate();
@@ -258,11 +247,78 @@ async function init() {
    =========================== */
 async function loadArchiveData() {
     const [cloud, byId] = await Promise.all([
-        fetch('/public/data/cloud.resources.json').then((r) => r.json()),
-        fetch('/public/data/resources.byId.json').then((r) => r.json()),
+        fetch(new URL('../public/data/cloud.resources.json', import.meta.url)).then((r) => r.json()),
+        fetch(new URL('../public/data/resources.byId.json', import.meta.url)).then((r) => r.json()),
     ]);
     CLOUD = cloud as CloudItem[];
     BY_ID = byId as Record<string, FullRecord>;
+}
+
+// Base search state
+let searchQuery = "";
+
+// Remove first 3 underscore-delimited parts and extension; tidy spaces
+function cleanFileDisplay(name: string): string {
+    const base = name.split('/').pop() || name;
+    const noExt = base.replace(/\.[a-z0-9]+$/i, '');
+    const parts = noExt.split('_');
+    const kept = parts.slice(3).join(' ').replace(/[-]+/g, ' ');
+    return kept.replace(/\s+/g, ' ').trim();
+}
+
+// Decide what to show as title in UI (does not mutate the manifest)
+function displayTitleFor(meta: Doc): string {
+    const rec = BY_ID[String(meta.id)];
+    // If meta.title looks like a filename pattern (contains underscores and an extension inside), clean it.
+    if (rec?.title && /_/.test(rec.title)) return cleanFileDisplay(rec.title);
+    if (meta.title && /_/.test(meta.title)) return cleanFileDisplay(meta.title);
+    // Else try cleaning from URL/hires filename if title is missing
+    const fromUrl = rec?.hires?.[0] || meta.url || "";
+    if (fromUrl) {
+        const base = fromUrl.split('/').pop() || "";
+        if (/_/.test(base)) return cleanFileDisplay(base);
+    }
+    return meta.title || rec?.title || "Untitled";
+}
+
+// Tokenize, support tag:foo filters (AND across tokens)
+function matchesQuery(meta: Doc, q: string): boolean {
+    if (!q.trim()) return true;
+    const rec = BY_ID[String(meta.id)];
+    const hay = [
+        displayTitleFor(meta).toLowerCase(),
+        (meta.description || "").toLowerCase(),
+        ...(meta.tags || []).map(t => String(t).toLowerCase()),
+        ...(rec?.tags || []).map(t => String(t).toLowerCase()),
+    ];
+
+    // parse tokens
+    const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
+    let ok = true;
+    for (const t of tokens) {
+        const tagMatch = t.match(/^tag:(.+)$/);
+        if (tagMatch) {
+            const want = tagMatch[1];
+            const tagPool = new Set([...(meta.tags || []), ...(rec?.tags || [])].map(x => String(x).toLowerCase()));
+            if (!tagPool.has(want)) { ok = false; break; }
+        } else {
+            // plain term must appear in any hay entry
+            if (!hay.some(h => h.includes(t))) { ok = false; break; }
+        }
+    }
+    return ok;
+}
+
+// Combined filter (period chip + search). Controls sprite visibility styling.
+function updateVisibility() {
+    const [minY, maxY] = activePeriodKey ? PERIODS[activePeriodKey] : [Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY];
+    sprites.forEach((spr) => {
+        const meta = (spr as any).meta as Doc;
+        const y = numericYear(meta?.year as any);
+        const inPeriod = !activePeriodKey || (y !== null && y >= minY && y <= maxY);
+        const searchOk = matchesQuery(meta, searchQuery);
+        setSpriteState(spr, inPeriod && searchOk);
+    });
 }
 
 function buildDocsFromData(
@@ -273,21 +329,18 @@ function buildDocsFromData(
         const rec = byId[String(it.id)];
         const url = it.documentDirect || rec?.url || it.link || null;
 
-        // mediaType in your manifest is usually "image"; topic for header comes from topics[0]
+        // topic label from manifest.topics[0]
         const topicTitle =
-            Array.isArray(rec?.topics) && rec!.topics!.length
-                ? String(rec!.topics![0])
-                : null;
+            Array.isArray(rec?.topics) && rec!.topics!.length ? String(rec!.topics![0]) : null;
 
-        // rough topic bucket if you ever want to tint by topic
+        // rough topic bucket (optional tinting)
         const mt = (it.mediaType || rec?.mediaType || '').toLowerCase();
         let topic: Doc['topic'] = 'other';
         if (mt.includes('protest')) topic = 'protest';
         else if (mt.includes('flyer')) topic = 'flyer';
         else if (mt.includes('surveillance')) topic = 'surveillance';
         else if (mt.includes('policy')) topic = 'policy';
-        else if (mt.includes('media') || mt.includes('newspaper') || mt.includes('press'))
-            topic = 'media';
+        else if (mt.includes('media') || mt.includes('newspaper') || mt.includes('press')) topic = 'media';
 
         return {
             id: it.id,
@@ -310,12 +363,7 @@ function buildDocsFromData(
    =========================== */
 function setupThree() {
     scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(
-        70,
-        window.innerWidth / window.innerHeight,
-        1,
-        6000
-    );
+    camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 6000);
     camera.position.z = 900;
 
     renderer = new THREE.WebGLRenderer({
@@ -328,33 +376,18 @@ function setupThree() {
     // @ts-ignore
     renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-    // Mount as a fixed, full-viewport background under UI
-    // Mount canvas *inside* #app, behind everything else
+    // Mount canvas inside #app, behind UI
     const appEl = document.getElementById('app') as HTMLElement;
-    appEl.style.position = 'relative';      // stacking context for children
+    appEl.style.position = 'relative';
     renderer.domElement.style.position = 'absolute';
-    renderer.domElement.style.inset = '0';  // fill #app
-    renderer.domElement.style.zIndex = '0'; // background layer
-    appEl.prepend(renderer.domElement);     // put canvas first so other UI sits above
+    renderer.domElement.style.inset = '0';
+    renderer.domElement.style.zIndex = '0';
+    appEl.prepend(renderer.domElement);
 
-
-// Ensure the info card sits above and on the right
-    Object.assign(card.style, {
-        position: 'fixed',
-        left: '50%',
-        bottom: '24px',
-        transform: 'translateX(-50%)', // center horizontally
-        width: '100%',
-        zIndex: '1000',
-        pointerEvents: 'auto',
-    });
-
-
-
-// Don’t let clicks on the card bubble to the canvas
+    // Keep clicks on the card from bubbling to canvas
     card.addEventListener('click', (e) => e.stopPropagation());
 
-// “Open Document” should open a new tab and NOT close the modal
+    // “Open Document” default behavior if not intercepted later
     cardLink.addEventListener('click', (e) => {
         e.stopPropagation();
         cardLink.target = '_blank';
@@ -369,17 +402,8 @@ function setupThree() {
     c.style.zIndex = '0';
     c.style.pointerEvents = 'auto'; // allow orbit/picking
 
-    // Make sure UI bits render above if needed
     if (hoverTip) hoverTip.style.zIndex = '20';
     if (hintEl) hintEl.style.zIndex = '20';
-
-    // Prevent card clicks from bubbling to the window (so clicking the link won’t close it)
-    card.addEventListener('click', (e) => e.stopPropagation());
-    cardLink.addEventListener('click', (e) => {
-        e.stopPropagation();
-        cardLink.target = '_blank';
-        cardLink.rel = 'noopener';
-    });
 
     controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -412,11 +436,9 @@ function setupThree() {
         } else {
             hoverTip.style.display = 'none';
         }
-
-
     });
 
-    // Click in empty space closes; clicking the card won’t bubble here
+    // Click in empty space clears; clicking a sprite selects
     window.addEventListener('click', () => {
         raycaster.setFromCamera(mouse, camera);
         const hits = raycaster.intersectObjects(group.children);
@@ -445,19 +467,11 @@ function positionsRingTime(
         liftY?: number;
     }
 ): THREE.Vector3[] {
-    const {
-        R = 300,
-        zRange = 140,
-        angleJitter = 0.18,
-        timeAngle = 0.22,
-        timeRadial = 40,
-        liftY = 0,
-    } = opts || {};
+    const { R = 300, zRange = 140, angleJitter = 0.18, timeAngle = 0.22, timeRadial = 40, liftY = 0 } =
+    opts || {};
 
     const ys = docs
-        .map((d) =>
-            typeof d.year === 'number' ? d.year : parseInt(String(d.year ?? ''), 10)
-        )
+        .map((d) => (typeof d.year === 'number' ? d.year : parseInt(String(d.year ?? ''), 10)))
         .filter((n) => Number.isFinite(n)) as number[];
     const yMin = Math.min(...(ys.length ? ys : [1960]));
     const yMax = Math.max(...(ys.length ? ys : [1999]));
@@ -469,14 +483,12 @@ function positionsRingTime(
 
     for (let i = 0; i < n; i++) {
         const d = docs[i];
-        const yVal =
-            typeof d.year === 'number' ? d.year : parseInt(String(d.year ?? ''), 10);
+        const yVal = typeof d.year === 'number' ? d.year : parseInt(String(d.year ?? ''), 10);
         const t = Number.isFinite(yVal) ? (yVal - yMin) / span : 0.5;
 
         let a = i * PHI;
         a += (t - 0.5) * timeAngle;
-        a +=
-            (Math.sin(i * 1.27) * 0.5 + Math.cos(i * 0.73) * 0.5) * angleJitter;
+        a += (Math.sin(i * 1.27) * 0.5 + Math.cos(i * 0.73) * 0.5) * angleJitter;
 
         let r = R + (t - 0.5) * timeRadial;
         r += (Math.sin(i * 0.91) * 0.5 + Math.cos(i * 1.11) * 0.5) * 12;
@@ -510,18 +522,14 @@ function buildSprites(positions: THREE.Vector3[], docs: Doc[]) {
 
                 const mat = new THREE.SpriteMaterial({
                     map: texture,
-                    color: 0xF5E7D6,
-                    transparent: true,   // ← add this line
-                    opacity: 1.0
+                    color: 0xf5e7d6,
+                    transparent: true,
+                    opacity: 1.0,
                 });
 
                 const sprite = new THREE.Sprite(mat) as SpriteWithMeta;
 
-                sprite.scale.set(
-                    60 + Math.random() * 28,
-                    (60 + Math.random() * 28) * (0.85 + Math.random() * 0.25),
-                    1
-                );
+                sprite.scale.set(60 + Math.random() * 28, (60 + Math.random() * 28) * (0.85 + Math.random() * 0.25), 1);
                 sprite.position.copy(positions[i] || new THREE.Vector3());
                 (sprite as any).meta = doc;
                 (sprite as any).userData = { id: doc.id };
@@ -541,6 +549,27 @@ function buildSprites(positions: THREE.Vector3[], docs: Doc[]) {
 /* ===========================
    Selection / Card
    =========================== */
+function setSpriteState(spr: SpriteWithMeta, active: boolean) {
+    const mat = spr.material as THREE.SpriteMaterial;
+    // store base scale once
+    if (!(spr as any).baseScale) {
+        (spr as any).baseScale = spr.scale.clone();
+    }
+    mat.transparent = true;
+
+    if (active) {
+        mat.opacity = 1.0;
+        const s = (spr as any).baseScale as THREE.Vector3;
+        spr.scale.set(s.x * 1.15, s.y * 1.15, s.z);
+        mat.color.setHex(0xfff2e0);
+    } else {
+        mat.opacity = 0.22;
+        const s = (spr as any).baseScale as THREE.Vector3;
+        spr.scale.copy(s);
+        mat.color.setHex(0xb0b0b0);
+    }
+}
+
 function selectSprite(spr: THREE.Sprite) {
     if (selectionRing) {
         scene.remove(selectionRing);
@@ -568,7 +597,7 @@ function selectSprite(spr: THREE.Sprite) {
         side: THREE.DoubleSide,
         transparent: true,
         opacity: 0.95,
-        depthTest: false, // make sure it draws on top
+        depthTest: false, // draw on top
     });
 
     selectionRing = new THREE.Mesh(ringGeo, ringMat);
@@ -576,12 +605,36 @@ function selectSprite(spr: THREE.Sprite) {
     scene.add(selectionRing);
 
     // Card content
-    cardHeader.textContent = meta.title;
-    cardTitle.textContent = meta.description || meta.title || '—';
+    cardHeader.textContent = displayTitleFor(meta);
+    cardTitle.textContent  = meta.description || displayTitleFor(meta);
     cardYear.textContent = meta.year != null ? String(meta.year) : '—';
     cardRepo.textContent = meta.repo ?? '—';
     cardThumb.src = meta.iconURL;
     cardLink.href = meta.url || '#';
+
+// DEMO MODE: just open the link in a new tab, no modal
+    cardLink.target = '_blank';
+    cardLink.rel = 'noopener noreferrer';
+    cardLink.onclick = (e) => {
+        // if there's no URL, do nothing
+        if (!meta.url) {
+            e.preventDefault();
+            return false;
+        }
+        // let the browser handle it (new tab via target)
+        // still stop bubbling so clicks on link don't close the card
+        e.stopPropagation();
+        return true;
+    };
+
+    // Close preview button (if panel already exists)
+    const closeBtn = document.getElementById('docPreviewClose') as HTMLButtonElement | null;
+    const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
+    closeBtn?.addEventListener('click', () => {
+        const frame = document.getElementById('docFrame') as HTMLIFrameElement;
+        if (frame) frame.src = 'about:blank';
+        if (docPreview) docPreview.style.display = 'none';
+    });
 
     // Tags
     tagChips.innerHTML = '';
@@ -604,6 +657,31 @@ function clearSelection() {
     }
     selectedObj = null;
     card.style.display = 'none';
+}
+
+function clearHighlight() {
+    activePeriodKey = null;
+    updateVisibility();
+    updatePeriodCardUI(null);
+}
+
+function applyHighlightForPeriod(key: keyof typeof PERIODS) {
+    activePeriodKey = key;
+    updateVisibility();
+    updatePeriodCardUI(key);
+}
+
+
+// Selected state on the chips
+function updatePeriodCardUI(key: keyof typeof PERIODS | null) {
+    const chips = Array.from(
+        document.querySelectorAll<HTMLAnchorElement>('.timeline-cards .chip')
+    );
+    chips.forEach((chip) => {
+        const k = (chip.getAttribute('href') || '').replace(/^#/, '');
+        if (key && k === key) chip.classList.add('is-active');
+        else chip.classList.remove('is-active');
+    });
 }
 
 /* ===========================

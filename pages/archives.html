@@ -24,7 +24,13 @@
           <a href="./about-the-project.html" role="menuitem">The Project</a>
         </div>
       </li>
-      <li class="nav-item"><a href="./archives.html" aria-current="page">ARCHIVES</a></li>
+      <li class="nav-item has-dropdown">
+      <a href="./archives.html" aria-current="page">ARCHIVES<span class="caret" aria-hidden="true"></span></a>
+        <div class="dropdown" role="menu" aria-label="Archive menu">
+          <a href="./search.html" role="menuitem">Search</a>
+          <a href="./archives.html" role="menuitem">Explore</a>
+        </div>
+      </li>
       <li class="nav-item"><a href="./freedom-schools.html">FREEDOM SCHOOLS</a></li>
 
       <li class="nav-item"><a href="./resources-tools.html">RESOURCES &amp; TOOLS</a></li>
@@ -36,19 +42,24 @@
 <main>
 <section class="container">
 
-  <!-- Timeline filter chips (horizontal) -->
-  <h1>Archives</h1>
-  <div class="timeline-bar">
+  <!-- Timeline + Search toolbar -->
+  <h1 class="page-title">Archives</h1>
+  <div class="archive-toolbar">
+    <div id="searchPanel" class="search-panel">
+      <input id="searchInput" type="search" placeholder="Search titles or tags" autocomplete="off" />
+      <button id="searchClear" class="search-clear" aria-label="Clear search">✕</button>
+    </div>
+
     <nav class="timeline-cards" aria-label="Time period filters">
-      <a class="chip" data-period="precursors" href="#precursors" data-period="precursors">
+      <a class="chip" data-period="precursors" href="#precursors">
         <span class="chip__title">Precursors</span>
         <span class="chip__sub">1940s–1950s</span>
       </a>
-      <a class="chip" data-period="thick" href="#thick" data-period="thick">
+      <a class="chip" data-period="thick" href="#thick">
         <span class="chip__title">In the Thick of the Struggle</span>
         <span class="chip__sub">1960s–1980s</span>
       </a>
-      <a class="chip" data-period="today" href="#today" data-period="today">
+      <a class="chip" data-period="today" href="#today">
         <span class="chip__title">Student Organizing Today</span>
         <span class="chip__sub">1990s–present</span>
       </a>
@@ -89,16 +100,16 @@
 
 
 <footer class="site-footer">
-  <div class="footer-inner">
+  <div >
     <p>Created with generous funding from:</p>
-    <div class="funders">
-      <img alt="AADS" src="../public/img/CCI_Logo_favicon_Final.png" />
-      <img alt="CCI" src="../public/img/CCI_Logo_favicon_Final.png" />
-      <a href="https://www.archives.gov/nhprc" target="_blank" rel="noopener">
-        <img alt="NHPRC" src="../public/img/CCI_Logo_favicon_Final.png" />
-      </a>
+    <div class="logos">
+      <img alt="AADS" src="../public/img/logo1.png" />
+      <img alt="CCI" src="../public/img/logo2.png" />
+      <img alt="NHPRC" src="../public/img/logo3.png" />
     </div>
+
     <p class="copyright">© 2025 Archiving Activism. All Rights Reserved.</p>
+  </div>
   </div>
 </footer>
 
