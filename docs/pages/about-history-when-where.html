@@ -44,11 +44,22 @@
     </section>
 
     <div class="side-images">
-      <div class="imgbox">Image placeholder</div>
-      <div class="imgbox">Image placeholder</div>
+      <!-- left image column -->
+      <div class="imgbox" data-rotator="side">
+        <img src="public/image4.jpg"   alt="" class="is-visible" />
+        <img src="public/image9.jpg" alt="" />
+        <img src="public/image1.jpg" alt="" />
+      </div>
+
+      <!-- right column -->
+      <div class="imgbox" data-rotator="side">
+        <img src="public/image6.jpg"  alt="" class="is-visible" />
+        <img src="public/image7.jpg"  alt="" />
+        <img src="public/image3.jpg"  alt="" />
+      </div>
     </div>
 
-    <section class="section">
+    <section class="container section">
       <h2>WHEN</h2>
       <p class="lede">From the 1940s to the present, the interplay of institutionalized segregation, grassroots activism, urban development, and shifting demographic patterns has shaped the racial politics of Austin, Texas.  The primary roots of Austin’s racial segregation can be traced to the 1928 city plan, which effectively codified racial separation by concentrating African American communities in East Austin through the strategic denial of public services such as schools, healthcare, and utilities outside of designated zones. This spatial segregation persisted into the 1940s and beyond, reinforced by Jim Crow laws, racially restrictive housing covenants, and discriminatory employment practices that marginalized both African American and Mexican American populations. During this period, political representation for communities of color was virtually nonexistent, and access to quality education and economic opportunity was severely limited.</p>
       <p class="lede">By the 1950s and 1960s, civil rights activism began to challenge these structures. Local branches of national organizations like the NAACP, along with student-led movements on and off the University of Austin’s campus, and faith-based groups, mobilized to demand desegregation of schools and public facilities. Mexican American activists, influenced by the broader Chicano Movement, fought for bilingual education, labor rights, and an end to educational and housing discrimination. These efforts culminated in federally mandated desegregation orders in the 1970s, including court-ordered busing in the Austin Independent School District. However, these policies were met with resistance, including white flight and political backlash, which undermined long-term integration goals.</p>
@@ -57,8 +68,8 @@
       <p class="lede">Despite these developments, many structural issues remain unresolved. Gentrification continues to displace communities of color, public schools remain de facto segregated along racial and socioeconomic lines, and trust between marginalized communities and city institutions remains fragile. In response, the city has implemented several equity initiatives, including the creation of an Equity Office, anti-displacement funds, and affordable housing bonds. Nevertheless, these measures have struggled to keep pace with the underlying forces of economic inequality and racialized development. Austin’s racial politics today reflect both the legacy of segregation and the ongoing struggle for racial justice in a rapidly transforming urban landscape.</p>
     </section>
 
-    <section class="section">
-      <h2>WHERE</h2>
+    <section class="container section">
+      <h2 class="color-header">WHERE</h2>
       <p class="lede">This website provides an in-depth overview of Austin's history from the 1950s to the present, drawing from rich collections of artifacts and archives housed at UT Austin, the Austin History Center, and various local community archives. Visitors can explore the city's evolving racial landscape through a searchable database that allows filtering by local activist, organization, time period, and type of activism. The site features a wide array of historical materials—including flyers, pamphlets, letters, and photographs—that document the events, people, places, and groups that have played a pivotal role in shaping the racial fabric of Austin.</p>
     </section>
   </main>
@@ -78,4 +89,26 @@
  </footer>
 
 </body>
+
+<script>
+  (function(){
+      // generic fade-rotator initializer
+      function initFadeRotator(container, intervalMs) {
+          const frames = container.querySelectorAll('img');
+          if (frames.length <= 1) return;
+
+          let index = 0;
+          frames[index].classList.add('is-visible');
+
+          setInterval(() => {
+              frames[index].classList.remove('is-visible');
+              index = (index + 1) % frames.length;
+              frames[index].classList.add('is-visible');
+          }, intervalMs);
+      }
+
+      document.querySelectorAll('[data-rotator="side"]')
+          .forEach(el => initFadeRotator(el, 5000)); // 5s (or whatever feels good)
+  })();
+</script>
 </html>
