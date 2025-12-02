@@ -2,40 +2,39 @@ document.addEventListener("DOMContentLoaded", function () {
     const carouselTrack = document.getElementById("carousel-track");
     if (!carouselTrack) return;
 
-    let images = Array.from(carouselTrack.children);
-    let imageWidth = 0;
-    let trackWidth = 0;
-    let positionX = 0;
+    // Original (base) images, no clones
+    const baseImages = Array.from(carouselTrack.children);
 
-    const baseSpeed = 1;    // smooth default
-    const hoverSpeed = 2.6; // faster on hover
+    let positionX = 0;
+    let loopWidth = 0;
+
+    const baseSpeed  = 1;    // smooth default
+    const hoverSpeed = 2.6;  // faster on hover
     let currentSpeed = baseSpeed;
-    let targetSpeed = baseSpeed;
+    let targetSpeed  = baseSpeed;
     let scrollDirection = -1; // left by default
     let animationFrame = null;
     let isHovering = false;
 
-    function computeDimensions() {
-        images = Array.from(carouselTrack.children);
+    function buildStrip() {
+        // Reset track to only the base images
+        carouselTrack.innerHTML = "";
+        baseImages.forEach(img => carouselTrack.appendChild(img));
 
-        // Measure based on first visible image
-        const firstImg = images.find(img => img.naturalWidth || img.complete) || images[0];
-        imageWidth = firstImg ? firstImg.getBoundingClientRect().width : 360;
-
-        // Clone until we have ≥ 2x viewport width
-        const viewport = carouselTrack.parentElement; // .carousel-viewport
+        const viewport = carouselTrack.parentElement;
         const minStrip = (viewport?.clientWidth || window.innerWidth) * 2;
 
-        while (carouselTrack.scrollWidth < minStrip && images.length) {
-            images.forEach(img => {
+        // Measure width of ONE full set
+        loopWidth = carouselTrack.scrollWidth;
+
+        // Clone base images as many times as needed to be comfortably wide
+        while (carouselTrack.scrollWidth < minStrip) {
+            baseImages.forEach(img => {
                 const clone = img.cloneNode(true);
                 clone.setAttribute("aria-hidden", "true");
                 carouselTrack.appendChild(clone);
             });
         }
-
-        // Half of total scrollable width is one seamless loop
-        trackWidth = carouselTrack.scrollWidth / 2;
     }
 
     function updateScroll() {
@@ -44,11 +43,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
         positionX += scrollDirection * currentSpeed;
 
-        // seamless loop
-        if (positionX <= -trackWidth) {
-            positionX += trackWidth;
-        } else if (positionX >= 0) {
-            positionX -= trackWidth;
+        // wrap in a seamless loop of width = one base set
+        if (scrollDirection === -1 && positionX <= -loopWidth) {
+            positionX += loopWidth;
+        } else if (scrollDirection === 1 && positionX >= 0) {
+            positionX -= loopWidth;
         }
 
         carouselTrack.style.transform = `translate3d(${positionX}px, 0, 0)`;
@@ -75,38 +74,34 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // Initialize after images are ready enough to measure
+    // Initialize after images are ready
     function initializeCarousel() {
+        const images = baseImages;
         const allComplete = images.every(img => img.complete);
-        if (allComplete) {
-            computeDimensions();
+
+        const go = () => {
+            buildStrip();
             startAutoScroll();
+        };
+
+        if (allComplete) {
+            go();
         } else {
             let loaded = 0;
             images.forEach(img => {
                 img.addEventListener("load", () => {
                     loaded++;
-                    if (loaded === images.length) {
-                        computeDimensions();
-                        startAutoScroll();
-                    }
+                    if (loaded === images.length) go();
                 }, { once: true });
                 img.addEventListener("error", () => {
-                    // still proceed; background color keeps block visible
                     loaded++;
-                    if (loaded === images.length) {
-                        computeDimensions();
-                        startAutoScroll();
-                    }
+                    if (loaded === images.length) go();
                 }, { once: true });
             });
 
-            // Safety: if some images are cached & some never fire 'load', start after a small delay
+            // safety: if some never fire, still start after a delay
             setTimeout(() => {
-                if (!animationFrame) {
-                    computeDimensions();
-                    startAutoScroll();
-                }
+                if (!animationFrame) go();
             }, 800);
         }
     }
@@ -123,13 +118,13 @@ document.addEventListener("DOMContentLoaded", function () {
         rightZone.addEventListener("mouseleave", stopHoverScroll);
     }
 
-    // Recompute on resize (debounced)
+    // Recompute on resize (resets strip, which is fine)
     let resizeTimer = null;
     window.addEventListener("resize", () => {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
             positionX = 0;
-            computeDimensions();
+            buildStrip();
         }, 150);
     });
 });

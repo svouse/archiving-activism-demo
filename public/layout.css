@@ -230,14 +230,16 @@ a.lightbox-link {
 .site-footer {
     background-color: rgba(var(--coral), 0.2);
     border-top: 1px solid #222;
-    margin-left: 5%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .footer-inner {
     max-width: 1100px;
     margin: 0 auto;
     display: inline-flex;
-    align-items: center;
 }
 
 .footer-inner p {
@@ -247,7 +249,7 @@ a.lightbox-link {
 
 .footer-inner .funders {
     display: flex;
-    gap: 20px;
+    gap: 30px;
     align-items: center;
     flex-wrap: wrap;
 }
@@ -282,17 +284,65 @@ a.lightbox-link {
 /* --- About Layout --- */
 .side-images {
     display: grid;
-    grid-template-columns: 0.9fr 1.1fr; /* images left, text right */
+    grid-template-columns: 0.9fr 1.1fr;
     gap: 40px;
     margin-top: 40px;
 }
 
+/* side image boxes become little rotator containers */
 .side-images .imgbox {
-    height: 220px; /* smaller than homepage carousel */
+    position: relative;
+    height: 220px;     /* your existing size */
+    overflow: hidden;
+}
+
+/* stack images + same crop behavior as hero */
+.side-images .imgbox img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;  /* top-anchored crop */
+    opacity: 0;
+    transition: opacity 700ms ease-in-out;
+    display: block;
+}
+
+.side-images .imgbox img.is-visible {
+    opacity: 1;
 }
 
 .section {
     margin-top: 40px;
+}
+
+.section-panel {
+    background: var(--tan);      /* your existing beige */
+    color: #1b1208;              /* chocolate text */
+    border-radius: 16px;
+    padding: 24px 32px;
+    margin: 40px;/* inner padding only */
+}
+
+/* headings inside the panel */
+.section-panel h2,
+.section-panel h3 {
+    color: #1b1208;
+}
+
+/* lists spacing inside panel */
+.section-panel ul {
+    margin-top: 12px;
+}
+
+/* links inside the panel, if any */
+.section-panel a {
+    color: #3a2211;
+    text-decoration: underline;
+}
+.section-panel a:hover {
+    color: #221108;
 }
 
 /* layout.css */
@@ -303,9 +353,21 @@ a.lightbox-link {
     overflow: hidden;
 }
 
+.site-footer > div > p {
+    text-align: center;
+}
+
 .site-footer {
     position: relative; /* ensure it flows after #app */
     z-index: 5; /* above background if needed */
+}
+
+.site-footer .logos {
+    display: flex;
+    gap: 50px;          /* space between logo links */
+    align-items: center;
+    padding: 20px 0;    /* optional vertical padding */
+    flex-wrap: wrap;    /* let them wrap on smaller screens */
 }
 
 /* Ensure the container shows even if images fail to load */
