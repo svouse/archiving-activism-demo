@@ -293,52 +293,51 @@ function displayTitleFor(meta: Doc): string {
     return meta.title || rec?.title || "Untitled";
 }
 
+function isLikelyLocalFilename(raw: string): boolean {
+    // Strip query/hash, keep last segment
+    const noQuery = raw.split(/[?#]/)[0];
+    const base = (noQuery.split('/').pop() || '').trim();
+
+    // Needs a real extension
+    if (!/\.(jpe?g|png|webp|tiff?|heic|pdf)$/i.test(base)) return false;
+
+    // Don’t treat bare numbers as filenames (Box IDs)
+    if (/^\d+$/.test(base)) return false;
+
+    return true;
+}
+
 function hiresLocalFor(meta: Doc): string | null {
     const rec = BY_ID[String(meta.id)];
-
     const candidates: string[] = [];
 
-    // 1) Explicit hires entry from manifest
-    if (rec?.hires && rec.hires.length) {
-        const raw = String(rec.hires[0]);
-
-        // strip query/hash (Box share links, etc.)
-        const noQuery = raw.split(/[?#]/)[0];
-
-        // take the last path segment as the "filename"
-        let base = noQuery.split('/').pop() || '';
-        base = decodeURIComponent(base);
-
-        // if it has a hires/ prefix, strip it off
-        base = base.replace(/^hires\//i, '').trim();
-
-        if (base) {
-            candidates.push(base);
+    // 1) Only use rec.hires if it actually looks like a filename, not a Box URL / ID.
+    if (Array.isArray(rec?.hires)) {
+        const explicit = rec!.hires!.find((h) => isLikelyLocalFilename(String(h)));
+        if (explicit) {
+            let base = String(explicit).split(/[?#]/)[0].split('/').pop() || '';
+            base = decodeURIComponent(base);
+            base = base.replace(/^hires[\/\\]/i, '').trim();
+            if (base) candidates.push(base);
         }
     }
 
-    // 2) Fall back to whatever thumbnail we’re already using
-    if (meta.iconURL) {
-        const noQuery = meta.iconURL.split(/[?#]/)[0];
-        let base = noQuery.split('/').pop() || '';
-        base = decodeURIComponent(base);
-        base = base.replace(/^hires\//i, '').trim(); // just in case
-        if (base) {
-            candidates.push(base);
-        }
-    }
-
-    // 3) As a last-ditch guess, build names from the title
+    // 2) Build guesses from the title (this is where your local naming actually lines up)
     const rawTitle = (rec?.title || meta.title || '').trim();
     if (rawTitle) {
-        // Clean up illegal path chars, but keep spaces/underscores as-is
+        // Clean “illegal” path chars but keep spaces/underscores/punctuation
         const cleaned = rawTitle
             .replace(/[<>:"/\\|?*]+/g, '')
             .replace(/\s+/g, ' ')
             .trim();
 
         if (cleaned) {
-            ['.jpg', '.jpeg', '.png'].forEach((ext) => {
+            // Common patterns in your folder:
+            //   title + ".jpg"
+            //   title + ".jpeg"
+            //   title + ".png"
+            //   title + " .jpg" (for HEIC/JPEG originals)
+            ['.jpg', '.jpeg', '.png', ' .jpg', ' .jpeg', ' .png'].forEach((ext) => {
                 candidates.push(cleaned + ext);
             });
         }
@@ -355,9 +354,18 @@ function hiresLocalFor(meta: Doc): string | null {
         return true;
     });
 
-    // We can't check existence client-side, so just pick the most likely candidate.
-    return HIRES_BASE + unique[0];
+    const filename = unique[0];
+    if (!filename) return null;
+
+    // Encode weird characters but keep any subfolders intact
+    const encoded = filename
+        .split('/')
+        .map((part) => encodeURIComponent(part))
+        .join('/');
+
+    return HIRES_BASE + encoded;
 }
+
 
 
 
