@@ -293,6 +293,20 @@ function displayTitleFor(meta: Doc): string {
     return meta.title || rec?.title || "Untitled";
 }
 
+function isLikelyLocalFilename(raw: string): boolean {
+    // Strip query/hash, keep last segment
+    const noQuery = raw.split(/[?#]/)[0];
+    const base = (noQuery.split('/').pop() || '').trim();
+
+    // Needs a real extension
+    if (!/\.(jpe?g|png|webp|tiff?|heic|pdf)$/i.test(base)) return false;
+
+    // Don’t treat bare numbers as filenames (Box IDs)
+    if (/^\d+$/.test(base)) return false;x
+
+    return true;
+}
+
 function hiresCandidates(meta: Doc): string[] {
     const rec = BY_ID[String(meta.id)];
     const candidates: string[] = [];
