@@ -592,55 +592,115 @@ function setSpriteState(spr: SpriteWithMeta, active: boolean) {
 }
 
 function selectSprite(spr: THREE.Sprite) {
-    // ... existing selectionRing + card text stuff ...
+    // --- selection ring setup (unchanged) ---
+    if (selectionRing) {
+        scene.remove(selectionRing);
+        selectionRing.geometry.dispose();
+        (selectionRing.material as THREE.Material).dispose();
+        selectionRing = null;
+    }
 
+    selectedObj = spr;
+
+    spr.updateWorldMatrix(true, false);
+    spr.getWorldScale(_worldScale);
+
+    const meta = (spr as any).meta as Doc;
+    const school = (meta.schoolPrimary as string) || 'other';
+    const color = SCHOOL_COLOR[school] ?? SCHOOL_COLOR.other;
+
+    const worldWidth = _worldScale.x;
+    const outer = worldWidth * 0.68;
+    const inner = outer * 0.78;
+
+    const ringGeo = new THREE.RingGeometry(inner, outer, 48);
+    const ringMat = new THREE.MeshBasicMaterial({
+        color,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.95,
+        depthTest: false, // draw on top
+    });
+
+    selectionRing = new THREE.Mesh(ringGeo, ringMat);
+    selectionRing.renderOrder = 999;
+    scene.add(selectionRing);
+
+    // --- card content text / thumb ---
     cardHeader.textContent = displayTitleFor(meta);
     cardTitle.textContent  = meta.description || displayTitleFor(meta);
     cardYear.textContent   = meta.year != null ? String(meta.year) : '—';
     cardRepo.textContent   = meta.repo ?? '—';
-    cardThumb.src          = meta.iconURL;
+    cardThumb.src          = meta.iconURL; // always safe as a small preview
 
-    // 1) prefer local hires
-    const hires = hiresLocalFor(meta);
-    // 2) else use any external doc URL
-    const openTarget = hires || meta.url || meta.iconURL || null;
+    // --- figure out the best thing to show in the modal ---
 
+    // 1) see if manifest has an explicit hires URL
+    const rec = BY_ID[String(meta.id)];
+    const hiresFromManifest =
+        rec?.hires && rec.hires.length ? String(rec.hires[0]) : null;
+
+    // 2) local hires path based on title (docs/hires/...)
+    const hiresLocal = hiresLocalFor(meta);
+
+    // 3) final priority:
+    //    local hires -> manifest hires -> external URL -> thumbnail
+    const openTarget =
+        hiresLocal ||
+        hiresFromManifest ||
+        meta.url ||
+        meta.iconURL ||
+        null;
+
+    // --- modal elements ---
     const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
     const frame      = document.getElementById('docFrame') as HTMLIFrameElement | null;
 
-    // Update link label but don't actually navigate
-    if (openTarget) {
-        cardLink.href = '#';
-        cardLink.textContent = 'Open document';
-    } else {
-        cardLink.href = '#';
-        cardLink.textContent = 'No document available';
-    }
+    // Card link label (we keep href as "#" so the browser doesn’t navigate on its own)
+    cardLink.href = '#';
+    cardLink.textContent = openTarget ? 'Open document' : 'No document available';
 
+    // IMPORTANT: all meta usage is inside this closure,
+    // so there is no global "meta" floating around to cause ReferenceError
     cardLink.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
 
-        if (!openTarget) return false;
+        if (!openTarget) {
+            return false;
+        }
 
+        // If the modal exists, use it with an iframe so we keep native
+        // click-to-zoom / image viewer behavior inside the overlay
         if (docPreview && frame) {
-            // This is the crucial bit: we load the **bare image/PDF URL**
-            // so the browser’s native viewer runs inside the iframe.
             frame.src = openTarget;
-            docPreview.style.display = 'flex';
+            docPreview.style.display = 'flex'; // assuming flex layout for overlay
         } else {
-            // Fallback: open in a new tab if the modal isn't in the DOM
+            // Fallback: just open in a new tab
             window.open(openTarget, '_blank', 'noopener');
         }
 
         return false;
     };
 
+    // Close button: only wires once even if selectSprite is called repeatedly
     const closeBtn = document.getElementById('docPreviewClose') as HTMLButtonElement | null;
-    closeBtn?.addEventListener('click', () => {
-        const frameEl = document.getElementById('docFrame') as HTMLIFrameElement | null;
-        if (frameEl) frameEl.src = 'about:blank';
-        if (docPreview) docPreview.style.display = 'none';
+    if (closeBtn && docPreview) {
+        // to avoid stacking listeners, remove any previous listener by resetting onclick
+        closeBtn.onclick = () => {
+            const frameEl = document.getElementById('docFrame') as HTMLIFrameElement | null;
+            if (frameEl) frameEl.src = 'about:blank';
+            docPreview.style.display = 'none';
+        };
+    }
+
+    // Tags
+    tagChips.innerHTML = '';
+    (meta.tags ?? []).forEach((t) => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.textContent = String(t);
+        tagChips.appendChild(chip);
     });
 
     card.style.display = 'block';
