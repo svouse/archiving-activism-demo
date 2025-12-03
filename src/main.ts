@@ -100,6 +100,9 @@ const PERIODS: Record<'precursors' | 'thick' | 'today', [number, number]> = {
 
 let activePeriodKey: keyof typeof PERIODS | null = null;
 
+const BASE = import.meta.env.BASE_URL || '/';
+const HIRES_BASE = BASE + 'hires/';
+
 /* ===========================
    DOM
    =========================== */
@@ -289,6 +292,27 @@ function displayTitleFor(meta: Doc): string {
     }
     return meta.title || rec?.title || "Untitled";
 }
+
+function hiresLocalFor(meta: Doc): string | null {
+    // Prefer the BY_ID title if present; otherwise use the cloud/Doc title
+    const rec = BY_ID[String(meta.id)];
+    const rawTitle = (rec?.title || meta.title || "").trim();
+    if (!rawTitle) return null;
+
+    // If the title already ends with an image-ish extension, keep it as-is.
+    // Otherwise default to ".jpg" (since most of your files are jpgs).
+    let filename = rawTitle;
+    if (!/\.(jpe?g|png|webp|heic)$/i.test(filename)) {
+        filename += '.jpg';
+    }
+
+    // Important: this assumes your actual filenames in docs/hires/
+    // **exactly** match this title + extension.
+    // If you’ve already aligned them in your spreadsheet and batch-renamed,
+    // this will work 1:1.
+    return HIRES_BASE + filename;
+}
+
 
 // Tokenize, support tag:foo filters (AND across tokens)
 function matchesQuery(meta: Doc, q: string): boolean {
@@ -619,7 +643,7 @@ function selectSprite(spr: THREE.Sprite) {
     cardYear.textContent = meta.year != null ? String(meta.year) : '—';
     cardRepo.textContent = meta.repo ?? '—';
     cardThumb.src = meta.iconURL;
-    cardLink.href = meta.url || '#';
+    
 
 // DEMO MODE: just open the link in a new tab, no modal
     cardLink.target = '_blank';
