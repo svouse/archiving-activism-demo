@@ -643,22 +643,39 @@ function selectSprite(spr: THREE.Sprite) {
     cardYear.textContent = meta.year != null ? String(meta.year) : '—';
     cardRepo.textContent = meta.repo ?? '—';
     cardThumb.src = meta.iconURL;
-    
 
-// DEMO MODE: just open the link in a new tab, no modal
+
+    cardThumb.src = meta.iconURL;
+
+    // Prefer local hires file, fall back to remote URL
+    const hires = hiresLocalFor(meta);
+    const openTarget = hires || meta.url || null;
+
+    // For debugging: see exactly what URL we're trying to open
+    console.debug('Open target for record', meta.id, { hires, url: meta.url, openTarget });
+
+    if (openTarget) {
+        cardLink.href = openTarget;
+        cardLink.textContent = 'Open document';
+    } else {
+        cardLink.href = '#';
+        cardLink.textContent = 'No document available';
+    }
+
     cardLink.target = '_blank';
     cardLink.rel = 'noopener noreferrer';
+
     cardLink.onclick = (e) => {
-        // if there's no URL, do nothing
-        if (!meta.url) {
+        if (!openTarget) {
             e.preventDefault();
+            e.stopPropagation();
             return false;
         }
-        // let the browser handle it (new tab via target)
-        // still stop bubbling so clicks on link don't close the card
+        // let the browser open a new tab, just don't let the click bubble
         e.stopPropagation();
         return true;
     };
+
 
     // Close preview button (if panel already exists)
     const closeBtn = document.getElementById('docPreviewClose') as HTMLButtonElement | null;
