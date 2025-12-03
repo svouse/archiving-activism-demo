@@ -370,6 +370,10 @@ a.lightbox-link {
     flex-wrap: wrap;    /* let them wrap on smaller screens */
 }
 
+.site-footer .logos img {
+    filter: sepia(100%);
+}
+
 /* Ensure the container shows even if images fail to load */
 .carousel-container { min-height: 280px; }
 
