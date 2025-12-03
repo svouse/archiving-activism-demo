@@ -98,16 +98,28 @@
 </main>
 
 <div id="docPreview" class="doc-preview" aria-hidden="true">
-    <!-- Existing iframe -->
-    <iframe id="docFrame" class="doc-frame"></iframe>
-
-    <!-- New image element for jpg/png/etc -->
-    <img id="docImage" class="doc-image" alt="" />
   <div class="doc-preview__inner">
-    <button id="docPreviewClose" class="doc-preview__close" type="button">×</button>
-    <iframe id="docFrame" title="Document preview"></iframe>
+    <button
+      id="docPreviewClose"
+      class="doc-preview__close"
+      type="button"
+      aria-label="Close document preview"
+    >
+      ×
+    </button>
+
+    <!-- Image for jpg/png/etc -->
+    <img id="docImage" class="doc-image" alt="" />
+
+    <!-- Iframe for PDFs or non-image content -->
+    <iframe
+      id="docFrame"
+      class="doc-frame"
+      title="Document preview"
+    ></iframe>
   </div>
 </div>
+
 
 <footer class="site-footer">
   <div >
