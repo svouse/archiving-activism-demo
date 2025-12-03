@@ -293,77 +293,85 @@ function displayTitleFor(meta: Doc): string {
     return meta.title || rec?.title || "Untitled";
 }
 
-function isLikelyLocalFilename(raw: string): boolean {
-    // Strip query/hash, keep last segment
-    const noQuery = raw.split(/[?#]/)[0];
-    const base = (noQuery.split('/').pop() || '').trim();
-
-    // Needs a real extension
-    if (!/\.(jpe?g|png|webp|tiff?|heic|pdf)$/i.test(base)) return false;
-
-    // Don’t treat bare numbers as filenames (Box IDs)
-    if (/^\d+$/.test(base)) return false;
-
-    return true;
-}
-
-function hiresLocalFor(meta: Doc): string | null {
+function hiresCandidates(meta: Doc): string[] {
     const rec = BY_ID[String(meta.id)];
     const candidates: string[] = [];
 
-    // 1) Only use rec.hires if it actually looks like a filename, not a Box URL / ID.
+    // 1) Explicit hires that already look like filenames (not Box IDs)
     if (Array.isArray(rec?.hires)) {
-        const explicit = rec!.hires!.find((h) => isLikelyLocalFilename(String(h)));
-        if (explicit) {
-            let base = String(explicit).split(/[?#]/)[0].split('/').pop() || '';
+        for (const h of rec!.hires!) {
+            if (!isLikelyLocalFilename(String(h))) continue;
+
+            let base = String(h).split(/[?#]/)[0].split('/').pop() || '';
             base = decodeURIComponent(base);
             base = base.replace(/^hires[\/\\]/i, '').trim();
             if (base) candidates.push(base);
         }
     }
 
-    // 2) Build guesses from the title (this is where your local naming actually lines up)
+    // 2) Build guesses from the title (this is where your local naming mostly lines up)
     const rawTitle = (rec?.title || meta.title || '').trim();
     if (rawTitle) {
-        // Clean “illegal” path chars but keep spaces/underscores/punctuation
-        const cleaned = rawTitle
-            .replace(/[<>:"/\\|?*]+/g, '')
-            .replace(/\s+/g, ' ')
-            .trim();
+        // Normalize spaces, but keep punctuation (quotes, etc.)
+        const normalized = rawTitle.replace(/\s+/g, ' ').trim();
+        // A "cleaned" variant with Windows-illegal chars removed, just in case
+        const cleaned = normalized.replace(/[<>:"/\\|?*]+/g, '').trim();
 
-        if (cleaned) {
-            // Common patterns in your folder:
-            //   title + ".jpg"
-            //   title + ".jpeg"
-            //   title + ".png"
-            //   title + " .jpg" (for HEIC/JPEG originals)
-            ['.jpg', '.jpeg', '.png', ' .jpg', ' .jpeg', ' .png'].forEach((ext) => {
-                candidates.push(cleaned + ext);
-            });
+        const bases = new Set<string>();
+        if (normalized) bases.add(normalized);
+        if (cleaned && cleaned !== normalized) bases.add(cleaned);
+
+        // Common patterns in your folder:
+        //   title + ".jpg/.jpeg/.png"
+        //   title + " .jpg" (for HEIC → JPEG conversions)
+        const exts = ['.jpg', '.jpeg', '.png', ' .jpg', ' .jpeg', ' .png'];
+        // Also try suffix variants like "_A", "_B", "_C"
+        const suffixes = ['', '_A', '_B', '_C'];
+
+        for (const base of bases) {
+            for (const suffix of suffixes) {
+                for (const ext of exts) {
+                    candidates.push(base + suffix + ext);
+                }
+            }
         }
     }
 
-    if (!candidates.length) return null;
-
-    // Deduplicate while preserving order
+    // Deduplicate (case-insensitive) while preserving order
     const seen = new Set<string>();
-    const unique = candidates.filter((name) => {
+    return candidates.filter((name) => {
         const key = name.toLowerCase();
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
     });
+}
 
-    const filename = unique[0];
-    if (!filename) return null;
 
-    // Encode weird characters but keep any subfolders intact
-    const encoded = filename
-        .split('/')
-        .map((part) => encodeURIComponent(part))
-        .join('/');
+async function hiresLocalFor(meta: Doc): Promise<string | null> {
+    const relNames = hiresCandidates(meta);
+    if (!relNames.length) return null;
 
-    return HIRES_BASE + encoded;
+    for (const rel of relNames) {
+        const encodedRel = rel
+            .split('/')
+            .map((part) => encodeURIComponent(part))
+            .join('/');
+
+        const url = HIRES_BASE + encodedRel;
+
+        try {
+            const res = await fetch(url, { method: 'HEAD' });
+            if (res.ok) {
+                return url; // first existing hires file wins
+            }
+        } catch {
+            // ignore network errors and try the next candidate
+        }
+    }
+
+    // None of the candidates exist – fall back to thumb in the click handler
+    return null;
 }
 
 
@@ -665,20 +673,20 @@ function selectSprite(spr: THREE.Sprite) {
     cardThumb.src          = meta.iconURL; // always safe thumbnail
 
     // --- figure out what to show in the modal ---
-    const hiresUrl  = hiresLocalFor(meta);          // strictly local /hires if possible
-    const thumbUrl  = meta.iconURL || null;
-    const openTarget = hiresUrl || thumbUrl || null;
-
     const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
     const frame      = document.getElementById('docFrame') as HTMLIFrameElement | null;
 
-    // The main "Open document" link: always uses our own hi-res or thumb
     cardLink.href = '#';
-    cardLink.textContent = openTarget ? 'Open document' : 'No document available';
+    cardLink.textContent = 'Open document';
 
-    cardLink.onclick = (e) => {
+    cardLink.onclick = async (e) => {
         e.preventDefault();
         e.stopPropagation();
+
+        // Try to resolve a real hires file by probing candidates with HEAD
+        const hiresUrl = await hiresLocalFor(meta);
+        const thumbUrl = meta.iconURL || null;
+        const openTarget = hiresUrl || thumbUrl || null;
 
         if (!openTarget) return false;
 
@@ -686,11 +694,11 @@ function selectSprite(spr: THREE.Sprite) {
             frame.src = openTarget;          // jpg/png/pdf → native browser view inside iframe
             docPreview.style.display = 'flex';
         } else {
-            // hard fallback: still only our own asset, never Box
             window.open(openTarget, '_blank', 'noopener');
         }
         return false;
     };
+
 
     // OPTIONAL: if you *do* still want a "View in Box (login required)" link,
     // you can add a separate <a id="boxLink"> in the card and wire it like:
