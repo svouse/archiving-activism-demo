@@ -414,12 +414,6 @@ function setupThree() {
     // Keep clicks on the card from bubbling to canvas
     card.addEventListener('click', (e) => e.stopPropagation());
 
-    // “Open Document” default behavior if not intercepted later
-    cardLink.addEventListener('click', (e) => {
-        e.stopPropagation();
-        cardLink.target = '_blank';
-        cardLink.rel = 'noopener';
-    });
 
     const c = renderer.domElement;
     c.style.position = 'fixed';
