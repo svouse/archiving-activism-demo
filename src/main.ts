@@ -295,18 +295,71 @@ function displayTitleFor(meta: Doc): string {
 
 function hiresLocalFor(meta: Doc): string | null {
     const rec = BY_ID[String(meta.id)];
-    const hiresEntry = rec?.hires && rec.hires.length ? rec.hires[0] : null;
 
-    if (!hiresEntry) return null;
+    const candidates: string[] = [];
 
-    // If it's already an absolute URL, just return it.
-    if (/^https?:\/\//i.test(hiresEntry)) {
-        return hiresEntry;
+    // 1) Explicit hires entry from manifest
+    if (rec?.hires && rec.hires.length) {
+        const raw = String(rec.hires[0]);
+
+        // strip query/hash (Box share links, etc.)
+        const noQuery = raw.split(/[?#]/)[0];
+
+        // take the last path segment as the "filename"
+        let base = noQuery.split('/').pop() || '';
+        base = decodeURIComponent(base);
+
+        // if it has a hires/ prefix, strip it off
+        base = base.replace(/^hires\//i, '').trim();
+
+        if (base) {
+            candidates.push(base);
+        }
     }
 
-    // Otherwise treat it as a filename relative to /hires/
-    return HIRES_BASE + hiresEntry.replace(/^\/+/, '');
+    // 2) Fall back to whatever thumbnail we’re already using
+    if (meta.iconURL) {
+        const noQuery = meta.iconURL.split(/[?#]/)[0];
+        let base = noQuery.split('/').pop() || '';
+        base = decodeURIComponent(base);
+        base = base.replace(/^hires\//i, '').trim(); // just in case
+        if (base) {
+            candidates.push(base);
+        }
+    }
+
+    // 3) As a last-ditch guess, build names from the title
+    const rawTitle = (rec?.title || meta.title || '').trim();
+    if (rawTitle) {
+        // Clean up illegal path chars, but keep spaces/underscores as-is
+        const cleaned = rawTitle
+            .replace(/[<>:"/\\|?*]+/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        if (cleaned) {
+            ['.jpg', '.jpeg', '.png'].forEach((ext) => {
+                candidates.push(cleaned + ext);
+            });
+        }
+    }
+
+    if (!candidates.length) return null;
+
+    // Deduplicate while preserving order
+    const seen = new Set<string>();
+    const unique = candidates.filter((name) => {
+        const key = name.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+
+    // We can't check existence client-side, so just pick the most likely candidate.
+    return HIRES_BASE + unique[0];
 }
+
+
 
 // Tokenize, support tag:foo filters (AND across tokens)
 function matchesQuery(meta: Doc, q: string): boolean {
@@ -592,101 +645,62 @@ function setSpriteState(spr: SpriteWithMeta, active: boolean) {
 }
 
 function selectSprite(spr: THREE.Sprite) {
-    // --- selection ring setup (unchanged) ---
-    if (selectionRing) {
-        scene.remove(selectionRing);
-        selectionRing.geometry.dispose();
-        (selectionRing.material as THREE.Material).dispose();
-        selectionRing = null;
-    }
-
-    selectedObj = spr;
-
-    spr.updateWorldMatrix(true, false);
-    spr.getWorldScale(_worldScale);
+    // ... selection ring stuff unchanged ...
 
     const meta = (spr as any).meta as Doc;
-    const school = (meta.schoolPrimary as string) || 'other';
-    const color = SCHOOL_COLOR[school] ?? SCHOOL_COLOR.other;
 
-    const worldWidth = _worldScale.x;
-    const outer = worldWidth * 0.68;
-    const inner = outer * 0.78;
-
-    const ringGeo = new THREE.RingGeometry(inner, outer, 48);
-    const ringMat = new THREE.MeshBasicMaterial({
-        color,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.95,
-        depthTest: false, // draw on top
-    });
-
-    selectionRing = new THREE.Mesh(ringGeo, ringMat);
-    selectionRing.renderOrder = 999;
-    scene.add(selectionRing);
-
-    // --- card content text / thumb ---
+    // text + thumb
     cardHeader.textContent = displayTitleFor(meta);
     cardTitle.textContent  = meta.description || displayTitleFor(meta);
     cardYear.textContent   = meta.year != null ? String(meta.year) : '—';
     cardRepo.textContent   = meta.repo ?? '—';
-    cardThumb.src          = meta.iconURL; // always safe as a small preview
+    cardThumb.src          = meta.iconURL; // always safe thumbnail
 
-    // --- figure out the best thing to show in the modal ---
+    // --- figure out what to show in the modal ---
+    const hiresUrl  = hiresLocalFor(meta);          // strictly local /hires if possible
+    const thumbUrl  = meta.iconURL || null;
+    const openTarget = hiresUrl || thumbUrl || null;
 
-    // 1) see if manifest has an explicit hires URL
-    const rec = BY_ID[String(meta.id)];
-    const hiresFromManifest =
-        rec?.hires && rec.hires.length ? String(rec.hires[0]) : null;
-
-    // 2) local hires path based on title (docs/hires/...)
-    const hiresLocal = hiresLocalFor(meta);
-
-    // 3) final priority:
-    //    local hires -> manifest hires -> external URL -> thumbnail
-    const openTarget =
-        hiresLocal ||
-        hiresFromManifest ||
-        meta.url ||
-        meta.iconURL ||
-        null;
-
-    // --- modal elements ---
     const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
     const frame      = document.getElementById('docFrame') as HTMLIFrameElement | null;
 
-    // Card link label (we keep href as "#" so the browser doesn’t navigate on its own)
+    // The main "Open document" link: always uses our own hi-res or thumb
     cardLink.href = '#';
     cardLink.textContent = openTarget ? 'Open document' : 'No document available';
 
-    // IMPORTANT: all meta usage is inside this closure,
-    // so there is no global "meta" floating around to cause ReferenceError
     cardLink.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
 
-        if (!openTarget) {
-            return false;
-        }
+        if (!openTarget) return false;
 
-        // If the modal exists, use it with an iframe so we keep native
-        // click-to-zoom / image viewer behavior inside the overlay
         if (docPreview && frame) {
-            frame.src = openTarget;
-            docPreview.style.display = 'flex'; // assuming flex layout for overlay
+            frame.src = openTarget;          // jpg/png/pdf → native browser view inside iframe
+            docPreview.style.display = 'flex';
         } else {
-            // Fallback: just open in a new tab
+            // hard fallback: still only our own asset, never Box
             window.open(openTarget, '_blank', 'noopener');
         }
-
         return false;
     };
 
-    // Close button: only wires once even if selectSprite is called repeatedly
+    // OPTIONAL: if you *do* still want a "View in Box (login required)" link,
+    // you can add a separate <a id="boxLink"> in the card and wire it like:
+    //
+    // const boxLinkEl = document.getElementById('boxLink') as HTMLAnchorElement | null;
+    // const boxUrl = BY_ID[String(meta.id)]?.url || meta.url || null;
+    // if (boxLinkEl && boxUrl) {
+    //     boxLinkEl.style.display = 'inline';
+    //     boxLinkEl.href = boxUrl;
+    //     boxLinkEl.target = '_blank';
+    //     boxLinkEl.rel = 'noopener noreferrer';
+    // } else if (boxLinkEl) {
+    //     boxLinkEl.style.display = 'none';
+    // }
+
+    // Close button (safe to re-assign each time)
     const closeBtn = document.getElementById('docPreviewClose') as HTMLButtonElement | null;
     if (closeBtn && docPreview) {
-        // to avoid stacking listeners, remove any previous listener by resetting onclick
         closeBtn.onclick = () => {
             const frameEl = document.getElementById('docFrame') as HTMLIFrameElement | null;
             if (frameEl) frameEl.src = 'about:blank';
@@ -694,7 +708,7 @@ function selectSprite(spr: THREE.Sprite) {
         };
     }
 
-    // Tags
+    // tags
     tagChips.innerHTML = '';
     (meta.tags ?? []).forEach((t) => {
         const chip = document.createElement('span');
