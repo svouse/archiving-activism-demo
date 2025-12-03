@@ -97,15 +97,12 @@
   </section>
 </main>
 
-<div id="docPreview" class="doc-preview" style="display: none;">
-  <button id="docPreviewClose" class="doc-preview__close" type="button">
-    × Close
-  </button>
-  <div class="doc-preview__frame-wrap">
-    <iframe id="docFrame" class="doc-preview__frame"></iframe>
+<div id="docPreview" class="doc-preview" aria-hidden="true">
+  <div class="doc-preview__inner">
+    <button id="docPreviewClose" class="doc-preview__close" type="button">×</button>
+    <iframe id="docFrame" title="Document preview"></iframe>
   </div>
 </div>
-
 
 <footer class="site-footer">
   <div >
