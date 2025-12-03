@@ -307,6 +307,13 @@ function isLikelyLocalFilename(raw: string): boolean {
     return true;
 }
 
+function isImageUrl(url: string | null | undefined): boolean {
+    if (!url) return false;
+    const clean = url.split(/[?#]/)[0].toLowerCase();
+    return /\.(jpe?g|png|webp|gif|tiff?|heic)$/.test(clean);
+}
+
+
 function hiresCandidates(meta: Doc): string[] {
     const rec = BY_ID[String(meta.id)];
     const candidates: string[] = [];
@@ -674,6 +681,56 @@ function setSpriteState(spr: SpriteWithMeta, active: boolean) {
     }
 }
 
+async function openDocumentForMeta(meta: Doc) {
+    const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
+    const frame      = document.getElementById('docFrame') as HTMLIFrameElement | null;
+    const img        = document.getElementById('docImage') as HTMLImageElement | null;
+
+    const thumbUrl = meta.iconURL || null;
+
+    if (!docPreview || (!frame && !img) || !thumbUrl) return;
+
+    // --- show modal immediately with the thumbnail ---
+    docPreview.style.display = 'flex';
+
+    const showImage = (url: string) => {
+        if (!img) return;
+        img.style.display = 'block';
+        img.src = url;
+        if (frame) {
+            frame.style.display = 'none';
+            frame.src = 'about:blank';
+        }
+    };
+
+    const showFrame = (url: string) => {
+        if (!frame) return;
+        frame.style.display = 'block';
+        frame.src = url;
+        if (img) {
+            img.style.display = 'none';
+            img.src = '';
+        }
+    };
+
+    // First show the thumb (image or whatever it is)
+    if (isImageUrl(thumbUrl) && img) {
+        showImage(thumbUrl);
+    } else if (frame) {
+        showFrame(thumbUrl);
+    }
+
+    // --- now try to upgrade to a hi-res version ---
+    const hiresUrl = await hiresLocalFor(meta);  // may be null if nothing found
+    if (!hiresUrl) return; // we already showed the thumb; no need for a second click
+
+    if (isImageUrl(hiresUrl) && img) {
+        showImage(hiresUrl);
+    } else if (frame) {
+        showFrame(hiresUrl);
+    }
+}
+
 function selectSprite(spr: THREE.Sprite) {
     // ... selection ring stuff unchanged ...
 
@@ -691,25 +748,15 @@ function selectSprite(spr: THREE.Sprite) {
     const frame      = document.getElementById('docFrame') as HTMLIFrameElement | null;
 
     cardLink.href = '#';
-    cardLink.textContent = 'Open document';
+    cardLink.textContent = meta.iconURL ? 'Open document' : 'No document available';
 
-    cardLink.onclick = async (e) => {
+    cardLink.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
 
-        // Try to resolve a real hires file by probing candidates with HEAD
-        const hiresUrl = await hiresLocalFor(meta);
-        const thumbUrl = meta.iconURL || null;
-        const openTarget = hiresUrl || thumbUrl || null;
+        if (!meta.iconURL) return false;  // nothing to show
 
-        if (!openTarget) return false;
-
-        if (docPreview && frame) {
-            frame.src = openTarget;          // jpg/png/pdf → native browser view inside iframe
-            docPreview.style.display = 'flex';
-        } else {
-            window.open(openTarget, '_blank', 'noopener');
-        }
+        void openDocumentForMeta(meta);   // fire and forget
         return false;
     };
 

@@ -706,12 +706,6 @@ canvas { z-index: 0 !important; }
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.75);
 }
 
-#docFrame {
-  width: 100%;
-  height: 100%;
-  border: 0;
-}
-
 /* close button */
 .doc-preview__close {
   position: absolute;
@@ -727,5 +721,32 @@ canvas { z-index: 0 !important; }
   cursor: pointer;
   z-index: 2;
 }
+#docPreview {
+  /* whatever you already have */
+  overflow: hidden;          /* outer modal */
+}
+
+#docPreviewInner {
+  /* if you have an inner container, make it scrollable */
+  overflow: auto;
+}
+
+.doc-frame,
+.doc-image {
+  width: 100%;
+  height: 100%;
+}
+
+/* Make images fit the modal instead of cropping/zooming in */
+.doc-image {
+  object-fit: contain;
+  display: none;     /* we’ll toggle this from TS */
+}
+
+.doc-frame {
+  border: 0;
+  display: none;     /* also toggled from TS */
+}
+
 
 
