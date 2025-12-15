@@ -33,7 +33,8 @@ type Doc = {
     title: string;
     rawTitle: string;
     year?: number | null;
-    url?: string | null;
+    url?: string | null;        // Box / external fallback
+    direct?: string | null;     // local pdf/image to open in-page
     tags: string[];
     repo?: string | null;
     iconURL: string;
@@ -140,11 +141,121 @@ export async function initSearch() {
     // Build model + UI
     DOCS = buildDocs(CLOUD, BY_ID);
     allTags = buildTagSet(DOCS);
+
+    readParams();            // <-- move up
     renderTagList(allTags);
     renderEraChips();
-    readParams();
+
     bindUI();
+    bindDocOpen();
     applyFilters();
+}
+
+function isImageUrl(url: string | null | undefined): boolean {
+    if (!url) return false;
+    const clean = url.split(/[?#]/)[0].toLowerCase();
+    return /\.(jpe?g|png|webp|gif|tiff?|heic)$/.test(clean);
+}
+
+function openDocModal(url: string) {
+    const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
+    const frame      = document.getElementById('docFrame') as HTMLIFrameElement | null;
+    const img        = document.getElementById('docImage') as HTMLImageElement | null;
+    const loaderEl   = document.getElementById('docLoader') as HTMLDivElement | null;
+    const imgViewport= document.querySelector('.doc-image-viewport') as HTMLDivElement | null;
+
+    if (!docPreview || (!frame && !img)) return;
+
+    docPreview.style.display = 'flex';
+    docPreview.setAttribute('aria-hidden', 'false');
+    if (loaderEl) loaderEl.classList.remove('is-hidden');
+
+    // reset
+    if (imgViewport) imgViewport.style.display = 'none';
+    if (img) { img.style.display = 'none'; img.src = ''; img.classList.remove('is-loaded'); }
+    if (frame) { frame.style.display = 'none'; frame.src = 'about:blank'; }
+
+    const showImage = (u: string) => {
+        if (!img || !imgViewport) return;
+        imgViewport.style.display = 'block';
+        img.style.display = 'block';
+        img.src = u;
+        if (frame) { frame.style.display = 'none'; frame.src = 'about:blank'; }
+        if (loaderEl) loaderEl.classList.add('is-hidden');
+        requestAnimationFrame(() => img.classList.add('is-loaded'));
+    };
+
+    const showFrame = (u: string) => {
+        if (!frame) return;
+        frame.style.display = 'block';
+        frame.src = u;
+        if (imgViewport) imgViewport.style.display = 'none';
+        if (img) { img.style.display = 'none'; img.src = ''; img.classList.remove('is-loaded'); }
+        if (loaderEl) loaderEl.classList.add('is-hidden');
+    };
+
+    if (isImageUrl(url)) {
+        const pre = new Image();
+        pre.onload = () => showImage(url);
+        pre.onerror = () => { if (loaderEl) loaderEl.classList.add('is-hidden'); };
+        pre.src = url;
+    } else {
+        // pdf or other
+        showFrame(url);
+    }
+}
+
+function bindModalCloseOnce() {
+    const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
+    const closeBtn   = document.getElementById('docPreviewClose') as HTMLButtonElement | null;
+    if (!docPreview || !closeBtn) return;
+
+    closeBtn.onclick = () => {
+        const frameEl = document.getElementById('docFrame') as HTMLIFrameElement | null;
+        if (frameEl) frameEl.src = 'about:blank';
+        docPreview.style.display = 'none';
+        docPreview.setAttribute('aria-hidden', 'true');
+    };
+}
+
+let docClickBound = false;
+function bindDocOpen() {
+    if (docClickBound) return;
+    docClickBound = true;
+
+    bindModalCloseOnce();
+
+    document.addEventListener('click', (e) => {
+        const a = (e.target as HTMLElement).closest('a[data-doc-id]') as HTMLAnchorElement | null;
+        if (!a) return;
+
+        e.preventDefault();
+
+        const open = (window as any).__AA_openDocumentForMeta as ((meta: any) => Promise<void> | void) | undefined;
+        if (!open) {
+            console.warn('[search] __AA_openDocumentForMeta not found on window');
+            return;
+        }
+
+        const id = a.dataset.docId!;
+        const d = DOCS.find(x => String(x.id) === id);
+        if (!d) return;
+
+        // minimal "meta" shape main.ts expects (it uses id + iconURL + title/year/repo/desc for hires guessing)
+        const meta = {
+            id: d.id,
+            title: d.rawTitle || d.title || 'Untitled',
+            year: d.year ?? null,
+            url: d.url ?? null,
+            tags: d.tags ?? [],
+            repo: d.repo ?? null,
+            iconURL: d.iconURL,
+            description: d.description ?? null,
+            // extra fields main.ts doesn't require are fine to omit
+        };
+
+        void open(meta);
+    });
 }
 
 // ---------- Data loader (from /public/data) ----------
@@ -160,29 +271,44 @@ async function loadSearchData() {
 function buildDocs(cloud: CloudItem[], byId: Record<string, FullRecord>): Doc[] {
     return cloud.map(it => {
         const rec = byId[String(it.id)];
-        const url = it.documentDirect || rec?.url || it.link || null;
         const rawTitle = rec?.title || it.title || 'Untitled';
         const display = /_/.test(rawTitle) ? cleanFileDisplay(rawTitle) : rawTitle;
         const tags = coerceTags(rec?.tags, it.tags, rec?.topics);
+
+        const direct = resolveUrl(
+            it.documentDirect ||
+            (rec as any)?.hires?.[0] ||
+            null
+        );
+
+        const url = resolveUrl(
+            rec?.url ||
+            it.link ||
+            null
+        );
+
+        const iconURL = resolveUrl(it.previewLocal) || it.previewLocal;
 
         return {
             id: it.id,
             title: display,
             rawTitle,
             year: (numericYear(it.year) ?? numericYear(rec?.year)) ?? null,
+            direct,
             url,
             tags,
             repo: rec?.repository ?? it.repository ?? null,
-            iconURL: it.previewLocal,
+            iconURL,
             description: rec?.description ?? it.description ?? null,
         };
     });
 }
 
 function buildTagSet(docs: Doc[]): string[] {
-    const s = new Set<string>();
-    docs.forEach(d => (d.tags || []).forEach(t => s.add(String(t))));
-    return Array.from(s).sort((a, b) => a.localeCompare(b));
+    return ["Direct Activism & Advocacy",
+        "University-Based Politics",
+        "Public Education"
+    ];
 }
 
 // ---------- UI wiring ----------
@@ -348,10 +474,9 @@ function renderResults(list: Doc[]) {
         });
 
         const link = document.createElement('a');
-        link.href = d.url || '#';
-        link.target = '_blank';
-        link.rel = 'noopener';
-        link.textContent = d.url ? 'Open document' : 'No link available';
+        link.href = '#';
+        link.textContent = 'Open document';
+        link.dataset.docId = String(d.id);
 
         card.appendChild(h);
         card.appendChild(yr);

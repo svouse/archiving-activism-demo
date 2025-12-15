@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<base href="/" />
+  <base href="/" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Search — Archiving Activism</title>
@@ -31,64 +31,82 @@
 </head>
 <body>
 <header class="site-header">
-  <div class="brand"><a href="../index.html">ARCHIVING ACTIVISM</a></div>
+  <div class="brand"><a href="/index.html">ARCHIVING ACTIVISM</a></div>
+
   <nav aria-label="Primary">
     <ul class="nav-list">
+      <!-- ABOUT: no dropdown; goes to The Project -->
+      <li class="nav-item">
+        <a href="/pages/about-the-project.html">ABOUT</a>
+      </li>
+
+      <!-- ARCHIVES dropdown stays -->
       <li class="nav-item has-dropdown">
-        <a href="./about-archiving-how-why.html" aria-haspopup="true" aria-expanded="false">
-          ABOUT <span class="caret" aria-hidden="true"></span>
+        <a href="/pages/archives.html">
+          ARCHIVES <span class="caret" aria-hidden="true"></span>
         </a>
-        <div class="dropdown" role="menu" aria-label="About menu">
-          <a href="./about-archiving-how-why.html" role="menuitem">Archiving: Why &amp; How</a>
-          <a href="./about-activism-who-what.html" role="menuitem">Activism: Who &amp; What</a>
-          <a href="./about-history-when-where.html" role="menuitem">History: When &amp; Where</a>
-          <a href="./about-the-project.html" role="menuitem">The Project</a>
+        <div class="dropdown" role="menu" aria-label="Archive menu">
+          <a href="/pages/search.html" role="menuitem">Search</a>
         </div>
       </li>
-      <li class="nav-item"><a href="./archives.html">ARCHIVES</a></li>
-      <li class="nav-item"><a href="./freedom-schools.html">FREEDOM SCHOOLS</a></li>
-      <li class="nav-item"><a href="./resources-tools.html">RESOURCES &amp; TOOLS</a></li>
+
+      <li class="nav-item"><a href="/pages/freedom-schools.html">FREEDOM SCHOOLS</a></li>
+      <li class="nav-item"><a href="/pages/resources-tools.html">RESOURCES &amp; TOOLS</a></li>
     </ul>
   </nav>
 </header>
-  <a class="backlink" href="/./pages/archives.html">← Back to Archive</a>
 
-  <main class="search-shell">
-    <h1 class="page-title">Search</h1>
+<a class="backlink" href="/./pages/archives.html">← Back to Archive</a>
 
-    <div class="search-bar" role="search">
-      <input id="q" type="search" placeholder="Search titles & descriptions…" />
-      <button id="clear">Clear</button>
+<main class="search-shell">
+  <h1 class="page-title">Search</h1>
+
+  <div class="search-bar" role="search">
+    <input id="q" type="search" placeholder="Search titles & descriptions…" />
+    <button id="clear">Clear</button>
+  </div>
+
+  <div class="toolbar">
+    <select id="sort" class="sort" aria-label="Sort results">
+      <option value="relevance">Sort: Relevance</option>
+      <option value="year-desc">Sort: Year (newest)</option>
+      <option value="year-asc">Sort: Year (oldest)</option>
+      <option value="title-asc">Sort: Title (A–Z)</option>
+    </select>
+  </div>
+
+  <div class="filters">
+    <!-- Era selectors (same ranges as the archive page) -->
+    <div class="eras">
+      <div id="eraChips" class="chips chips--eras" role="group" aria-label="Era filters"></div>
     </div>
 
-    <div class="toolbar">
-      <select id="sort" class="sort" aria-label="Sort results">
-        <option value="relevance">Sort: Relevance</option>
-        <option value="year-desc">Sort: Year (newest)</option>
-        <option value="year-asc">Sort: Year (oldest)</option>
-        <option value="title-asc">Sort: Title (A–Z)</option>
-      </select>
-    </div>
+    <!-- Tags accordion -->
+    <details class="tag-accordion" open>
+      <summary>Filter by tag</summary>
+      <div id="tagList" class="tags"></div>
+    </details>
+  </div>
 
-    <div class="filters">
-      <!-- Era selectors (same ranges as the archive page) -->
-      <div class="eras">
-        <div id="eraChips" class="chips chips--eras" role="group" aria-label="Era filters"></div>
+  <div id="docPreview" class="doc-preview" aria-hidden="true" style="display:none;">
+    <div class="doc-preview__inner">
+      <button id="docPreviewClose" class="doc-preview__close" type="button">×</button>
+      <div id="docLoader" class="doc-loader">Loading…</div>
+
+      <div class="doc-image-viewport">
+        <img id="docImage" class="doc-image" alt="" />
       </div>
 
-      <!-- Tags accordion -->
-      <details class="tag-accordion" open>
-        <summary>Filter by tag</summary>
-        <div id="tagList" class="tags"></div>
-      </details>
+      <iframe id="docFrame" class="doc-frame" title="Document preview"></iframe>
     </div>
+  </div>
 
+  <div id="meta" class="meta-line">0 results</div>
+  <section id="results" class="grid" aria-live="polite"></section>
+</main>
 
-    <div id="meta" class="meta-line">0 results</div>
-    <section id="results" class="grid" aria-live="polite"></section>
-  </main>
-
-  <!-- Vite: module entry -->
-  <script type="module" src="/assets/app.js"></script>
+<!-- Vite: module entry -->
+<script type="module" src="/assets/app.js"></script>
+<script type="module" src="/src/search.ts"> </script>
 </body>
 </html>

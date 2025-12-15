@@ -800,6 +800,9 @@ async function openDocumentForMeta(meta: Doc) {
     }
 }
 
+// make archives modal opener available to search.ts
+(window as any).__AA_openDocumentForMeta = (meta: Doc) => openDocumentForMeta(meta);
+
 
 function selectSprite(spr: THREE.Sprite) {
     // ... selection ring stuff unchanged ...
@@ -938,7 +941,7 @@ const isSearch =
 
 if (isSearch) {
     (async () => {
-        const mod = await import('./search.ts');
+        const mod = await import('./search');
         await mod.initSearch();
     })();
 }
