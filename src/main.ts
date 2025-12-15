@@ -117,6 +117,124 @@ const cardLink = document.getElementById('infoLink') as HTMLAnchorElement;
 const tagChips = document.getElementById('tagChips') as HTMLDivElement;
 const hintEl = document.getElementById('hint') as HTMLDivElement;
 
+// ====== Lightbox zoom/pan (clean version) ======
+let lightboxViewportEl: HTMLDivElement | null = null;
+let lightboxImgEl: HTMLImageElement | null = null;
+
+let zoomScale = 1;
+let zoomTranslateX = 0;
+let zoomTranslateY = 0;
+let lightboxZoomBound = false;
+
+function applyZoomTransform() {
+    if (!lightboxImgEl) return;
+    lightboxImgEl.style.transform =
+        `translate(${zoomTranslateX}px, ${zoomTranslateY}px) scale(${zoomScale})`;
+}
+
+function resetZoom() {
+    zoomScale = 1;
+    zoomTranslateX = 0;
+    zoomTranslateY = 0;
+    applyZoomTransform();
+}
+
+function setupLightboxZoom() {
+    if (lightboxZoomBound) return;
+
+    lightboxViewportEl = document.querySelector('.doc-image-viewport') as HTMLDivElement | null;
+    lightboxImgEl      = document.getElementById('docImage') as HTMLImageElement | null;
+
+    if (!lightboxViewportEl || !lightboxImgEl) return;
+    lightboxZoomBound = true;
+
+    let isPanning = false;
+    let panStartX = 0;
+    let panStartY = 0;
+    let startTranslateX = 0;
+    let startTranslateY = 0;
+
+    // Wheel zoom
+    lightboxViewportEl.addEventListener(
+        'wheel',
+        (e) => {
+            e.preventDefault();
+
+            const delta = e.deltaY > 0 ? -0.2 : 0.2;   // scroll up = zoom in
+            const newScale = Math.min(4, Math.max(1, zoomScale + delta));
+            if (newScale === zoomScale) return;
+
+            zoomScale = newScale;
+            applyZoomTransform();
+        },
+        { passive: false }
+    );
+
+    // Mouse drag pan
+    lightboxViewportEl.addEventListener('mousedown', (e) => {
+        if (zoomScale <= 1) return; // nothing to pan
+        isPanning = true;
+        panStartX = e.clientX;
+        panStartY = e.clientY;
+        startTranslateX = zoomTranslateX;
+        startTranslateY = zoomTranslateY;
+        lightboxViewportEl!.classList.add('is-dragging');
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isPanning) return;
+        const dx = e.clientX - panStartX;
+        const dy = e.clientY - panStartY;
+        zoomTranslateX = startTranslateX + dx;
+        zoomTranslateY = startTranslateY + dy;
+        applyZoomTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (!isPanning) return;
+        isPanning = false;
+        lightboxViewportEl!.classList.remove('is-dragging');
+    });
+
+    // Touch pan (single finger)
+    lightboxViewportEl.addEventListener(
+        'touchstart',
+        (e) => {
+            if (e.touches.length !== 1 || zoomScale <= 1) return;
+            const t = e.touches[0];
+            isPanning = true;
+            panStartX = t.clientX;
+            panStartY = t.clientY;
+            startTranslateX = zoomTranslateX;
+            startTranslateY = zoomTranslateY;
+            lightboxViewportEl!.classList.add('is-dragging');
+        },
+        { passive: false }
+    );
+
+    lightboxViewportEl.addEventListener(
+        'touchmove',
+        (e) => {
+            if (!isPanning || e.touches.length !== 1) return;
+            const t = e.touches[0];
+            const dx = t.clientX - panStartX;
+            const dy = t.clientY - panStartY;
+            zoomTranslateX = startTranslateX + dx;
+            zoomTranslateY = startTranslateY + dy;
+            applyZoomTransform();
+        },
+        { passive: false }
+    );
+
+    lightboxViewportEl.addEventListener('touchend', () => {
+        if (!isPanning) return;
+        isPanning = false;
+        lightboxViewportEl!.classList.remove('is-dragging');
+    });
+}
+
+
+
 /* ===========================
    Three.js
    =========================== */
@@ -302,7 +420,7 @@ function isLikelyLocalFilename(raw: string): boolean {
     if (!/\.(jpe?g|png|webp|tiff?|heic|pdf)$/i.test(base)) return false;
 
     // Don’t treat bare numbers as filenames (Box IDs)
-    if (/^\d+$/.test(base)) return false;x
+    if (/^\d+$/.test(base)) return false;
 
     return true;
 }
@@ -683,53 +801,99 @@ function setSpriteState(spr: SpriteWithMeta, active: boolean) {
 
 async function openDocumentForMeta(meta: Doc) {
     const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
-    const frame      = document.getElementById('docFrame') as HTMLIFrameElement | null;
-    const img        = document.getElementById('docImage') as HTMLImageElement | null;
+    const frame      = document.getElementById('docFrame')   as HTMLIFrameElement | null;
+    const img        = document.getElementById('docImage')   as HTMLImageElement | null;
+    const loaderEl   = document.getElementById('docLoader')  as HTMLDivElement | null;
+    const imgViewport= document.querySelector('.doc-image-viewport') as HTMLDivElement | null;
 
     const thumbUrl = meta.iconURL || null;
-
     if (!docPreview || (!frame && !img) || !thumbUrl) return;
 
-    // --- show modal immediately with the thumbnail ---
+    // make sure zoom/pan handlers are bound
+    setupLightboxZoom();
+
+    // open modal + reset state
     docPreview.style.display = 'flex';
+    // lockScroll(); // keep if you have this helper, otherwise remove
+
+    if (loaderEl) loaderEl.classList.remove('is-hidden');
+
+    if (imgViewport) imgViewport.style.display = 'none';
+    if (img) {
+        img.style.display = 'none';
+        img.src = '';
+        img.classList.remove('is-loaded');
+    }
+    if (frame) {
+        frame.style.display = 'none';
+        frame.src = 'about:blank';
+    }
+
+    resetZoom();  // base zoom each time
+
+    // --- hi-res candidate (image or pdf) ---
+    const hiresUrl   = await hiresLocalFor(meta);
+    const primaryUrl = hiresUrl || thumbUrl;
+    const isImage    = isImageUrl(primaryUrl);
 
     const showImage = (url: string) => {
-        if (!img) return;
+        if (!img || !imgViewport) return;
+
+        imgViewport.style.display = 'block';
         img.style.display = 'block';
         img.src = url;
+
         if (frame) {
             frame.style.display = 'none';
             frame.src = 'about:blank';
         }
+
+        if (loaderEl) loaderEl.classList.add('is-hidden');
+
+        requestAnimationFrame(() => {
+            img.classList.add('is-loaded');
+            applyZoomTransform(); // ensure transform is applied at base zoom
+        });
     };
 
     const showFrame = (url: string) => {
         if (!frame) return;
+
         frame.style.display = 'block';
         frame.src = url;
+
+        if (imgViewport) imgViewport.style.display = 'none';
         if (img) {
             img.style.display = 'none';
             img.src = '';
+            img.classList.remove('is-loaded');
         }
+
+        if (loaderEl) loaderEl.classList.add('is-hidden');
     };
 
-    // First show the thumb (image or whatever it is)
-    if (isImageUrl(thumbUrl) && img) {
-        showImage(thumbUrl);
-    } else if (frame) {
-        showFrame(thumbUrl);
-    }
-
-    // --- now try to upgrade to a hi-res version ---
-    const hiresUrl = await hiresLocalFor(meta);  // may be null if nothing found
-    if (!hiresUrl) return; // we already showed the thumb; no need for a second click
-
-    if (isImageUrl(hiresUrl) && img) {
-        showImage(hiresUrl);
-    } else if (frame) {
-        showFrame(hiresUrl);
+    if (isImage && img) {
+        const preloader = new Image();
+        preloader.onload = () => showImage(primaryUrl);
+        preloader.onerror = () => {
+            if (thumbUrl && thumbUrl !== primaryUrl && isImageUrl(thumbUrl)) {
+                const fallback = new Image();
+                fallback.onload = () => showImage(thumbUrl);
+                fallback.onerror = () => {
+                    if (loaderEl) loaderEl.classList.add('is-hidden');
+                };
+                fallback.src = thumbUrl;
+            } else {
+                if (loaderEl) loaderEl.classList.add('is-hidden');
+            }
+        };
+        preloader.src = primaryUrl;
+    } else {
+        // e.g. PDF
+        showFrame(primaryUrl);
     }
 }
+
 
 function selectSprite(spr: THREE.Sprite) {
     // ... selection ring stuff unchanged ...
@@ -781,6 +945,7 @@ function selectSprite(spr: THREE.Sprite) {
         closeBtn.onclick = () => {
             const frameEl = document.getElementById('docFrame') as HTMLIFrameElement | null;
             if (frameEl) frameEl.src = 'about:blank';
+            resetZoom();
             docPreview.style.display = 'none';
         };
     }
