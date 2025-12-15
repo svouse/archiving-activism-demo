@@ -1,12 +1,15 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: '/',
+  base: "/",
   build: {
-    outDir: 'docs',
+    outDir: "docs",
+    emptyOutDir: true,
     rollupOptions: {
-      // force a fixed filename your static pages can reference
-      output: { entryFileNames: 'assets/app.js' }
-    }
-  }
+      output: {
+        entryFileNames: "assets/app.js",
+        inlineDynamicImports: true,
+      },
+    },
+  },
 });
