@@ -127,110 +127,17 @@ let zoomTranslateY = 0;
 let lightboxZoomBound = false;
 
 function applyZoomTransform() {
-    if (!lightboxImgEl) return;
-    lightboxImgEl.style.transform =
-        `translate(${zoomTranslateX}px, ${zoomTranslateY}px) scale(${zoomScale})`;
 }
 
 function resetZoom() {
-    zoomScale = 1;
-    zoomTranslateX = 0;
-    zoomTranslateY = 0;
-    applyZoomTransform();
 }
 
 function setupLightboxZoom() {
+    // zoom disabled for now – keep stub so existing calls don't break
     if (lightboxZoomBound) return;
-
+    lightboxZoomBound = true;
     lightboxViewportEl = document.querySelector('.doc-image-viewport') as HTMLDivElement | null;
     lightboxImgEl      = document.getElementById('docImage') as HTMLImageElement | null;
-
-    if (!lightboxViewportEl || !lightboxImgEl) return;
-    lightboxZoomBound = true;
-
-    let isPanning = false;
-    let panStartX = 0;
-    let panStartY = 0;
-    let startTranslateX = 0;
-    let startTranslateY = 0;
-
-    // Wheel zoom
-    lightboxViewportEl.addEventListener(
-        'wheel',
-        (e) => {
-            e.preventDefault();
-
-            const delta = e.deltaY > 0 ? -0.2 : 0.2;   // scroll up = zoom in
-            const newScale = Math.min(4, Math.max(1, zoomScale + delta));
-            if (newScale === zoomScale) return;
-
-            zoomScale = newScale;
-            applyZoomTransform();
-        },
-        { passive: false }
-    );
-
-    // Mouse drag pan
-    lightboxViewportEl.addEventListener('mousedown', (e) => {
-        if (zoomScale <= 1) return; // nothing to pan
-        isPanning = true;
-        panStartX = e.clientX;
-        panStartY = e.clientY;
-        startTranslateX = zoomTranslateX;
-        startTranslateY = zoomTranslateY;
-        lightboxViewportEl!.classList.add('is-dragging');
-    });
-
-    window.addEventListener('mousemove', (e) => {
-        if (!isPanning) return;
-        const dx = e.clientX - panStartX;
-        const dy = e.clientY - panStartY;
-        zoomTranslateX = startTranslateX + dx;
-        zoomTranslateY = startTranslateY + dy;
-        applyZoomTransform();
-    });
-
-    window.addEventListener('mouseup', () => {
-        if (!isPanning) return;
-        isPanning = false;
-        lightboxViewportEl!.classList.remove('is-dragging');
-    });
-
-    // Touch pan (single finger)
-    lightboxViewportEl.addEventListener(
-        'touchstart',
-        (e) => {
-            if (e.touches.length !== 1 || zoomScale <= 1) return;
-            const t = e.touches[0];
-            isPanning = true;
-            panStartX = t.clientX;
-            panStartY = t.clientY;
-            startTranslateX = zoomTranslateX;
-            startTranslateY = zoomTranslateY;
-            lightboxViewportEl!.classList.add('is-dragging');
-        },
-        { passive: false }
-    );
-
-    lightboxViewportEl.addEventListener(
-        'touchmove',
-        (e) => {
-            if (!isPanning || e.touches.length !== 1) return;
-            const t = e.touches[0];
-            const dx = t.clientX - panStartX;
-            const dy = t.clientY - panStartY;
-            zoomTranslateX = startTranslateX + dx;
-            zoomTranslateY = startTranslateY + dy;
-            applyZoomTransform();
-        },
-        { passive: false }
-    );
-
-    lightboxViewportEl.addEventListener('touchend', () => {
-        if (!isPanning) return;
-        isPanning = false;
-        lightboxViewportEl!.classList.remove('is-dragging');
-    });
 }
 
 
@@ -852,7 +759,6 @@ async function openDocumentForMeta(meta: Doc) {
 
         requestAnimationFrame(() => {
             img.classList.add('is-loaded');
-            applyZoomTransform(); // ensure transform is applied at base zoom
         });
     };
 
