@@ -98,26 +98,25 @@
 </main>
 
 <div id="docPreview" class="doc-preview" aria-hidden="true">
-  <div class="doc-preview__inner">
-    <button
-      id="docPreviewClose"
-      class="doc-preview__close"
-      type="button"
-      aria-label="Close document preview"
-    >
-      ×
-    </button>
+    <div class="doc-preview__inner">
+        <!-- close button -->
+        <button id="docPreviewClose" class="doc-preview__close" type="button">×</button>
 
-    <!-- Image for jpg/png/etc -->
-    <img id="docImage" class="doc-image" alt="" />
+        <!-- optional tiny loader -->
+        <div id="docLoader" class="doc-loader">Loading…</div>
 
-    <!-- Iframe for PDFs or non-image content -->
-    <iframe
-      id="docFrame"
-      class="doc-frame"
-      title="Document preview"
-    ></iframe>
-  </div>
+        <!-- viewport that gets the zoom + pan handlers -->
+        <div class="doc-image-viewport">
+            <img id="docImage" class="doc-image" alt="" />
+        </div>
+
+        <!-- used only for PDFs / non-image docs -->
+        <iframe
+                id="docFrame"
+                class="doc-frame"
+                title="Document preview"
+        ></iframe>
+    </div>
 </div>
 
 
