@@ -205,25 +205,10 @@ function openDocModal(url: string) {
     }
 }
 
-function bindModalCloseOnce() {
-    const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
-    const closeBtn   = document.getElementById('docPreviewClose') as HTMLButtonElement | null;
-    if (!docPreview || !closeBtn) return;
-
-    closeBtn.onclick = () => {
-        const frameEl = document.getElementById('docFrame') as HTMLIFrameElement | null;
-        if (frameEl) frameEl.src = 'about:blank';
-        docPreview.style.display = 'none';
-        docPreview.setAttribute('aria-hidden', 'true');
-    };
-}
-
 let docClickBound = false;
 function bindDocOpen() {
     if (docClickBound) return;
     docClickBound = true;
-
-    bindModalCloseOnce();
 
     document.addEventListener('click', (e) => {
         const a = (e.target as HTMLElement).closest('a[data-doc-id]') as HTMLAnchorElement | null;
@@ -247,11 +232,11 @@ function bindDocOpen() {
             title: d.rawTitle || d.title || 'Untitled',
             year: d.year ?? null,
             url: d.url ?? null,
+            documentDirect: d.direct ?? null,   // <-- ADD THIS
             tags: d.tags ?? [],
             repo: d.repo ?? null,
             iconURL: d.iconURL,
             description: d.description ?? null,
-            // extra fields main.ts doesn't require are fine to omit
         };
 
         void open(meta);
@@ -266,6 +251,18 @@ async function loadSearchData() {
     ]);
     return { cloud, byId };
 }
+
+function resolveUrl(u: string | null | undefined): string | null {
+    if (!u) return null;
+
+    // already absolute or special
+    if (/^(https?:)?\/\//.test(u) || u.startsWith('data:') || u.startsWith('blob:')) return u;
+
+    // make relative-to-base
+    const clean = u.replace(/^\/+/, '');
+    return base + clean;
+}
+
 
 // ---------- Build docs ----------
 function buildDocs(cloud: CloudItem[], byId: Record<string, FullRecord>): Doc[] {
@@ -306,8 +303,9 @@ function buildDocs(cloud: CloudItem[], byId: Record<string, FullRecord>): Doc[] 
 
 function buildTagSet(docs: Doc[]): string[] {
     return ["Direct Activism & Advocacy",
+        "Pedagogy & Training",
+        "Public Education",
         "University-Based Politics",
-        "Public Education"
     ];
 }
 
