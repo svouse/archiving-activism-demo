@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { initSearch } from './search';
 
 /* ===========================
    Types
@@ -47,6 +48,7 @@ type Doc = {
     tags?: string[];
     repo?: string | null;
     iconURL: string;
+    documentDirect?: string | null;
     schoolPrimary?: string | null;
     description?: string | null;
     topicTitle?: string | null; // first entry of manifest.topics
@@ -106,16 +108,16 @@ const HIRES_BASE = BASE + 'hires/';
 /* ===========================
    DOM
    =========================== */
-const hoverTip = document.getElementById('hoverTip') as HTMLDivElement;
-const card = document.getElementById('infoCard') as HTMLDivElement;
-const cardHeader = document.querySelector('.info-card__header') as HTMLDivElement;
-const cardTitle = document.getElementById('infoTitle') as HTMLSpanElement;
-const cardYear = document.getElementById('infoYear') as HTMLSpanElement;
-const cardRepo = document.getElementById('infoRepo') as HTMLSpanElement;
-const cardThumb = document.getElementById('infoThumb') as HTMLImageElement;
-const cardLink = document.getElementById('infoLink') as HTMLAnchorElement;
-const tagChips = document.getElementById('tagChips') as HTMLDivElement;
-const hintEl = document.getElementById('hint') as HTMLDivElement;
+let hoverTip: HTMLDivElement | null = null;
+let card: HTMLDivElement | null = null;
+let cardHeader: HTMLDivElement | null = null;
+let cardTitle: HTMLSpanElement | null = null;
+let cardYear: HTMLSpanElement | null = null;
+let cardRepo: HTMLSpanElement | null = null;
+let cardThumb: HTMLImageElement | null = null;
+let cardLink: HTMLAnchorElement | null = null;
+let tagChips: HTMLDivElement | null = null;
+let hintEl: HTMLDivElement | null = null;
 
 // ====== Lightbox zoom/pan (clean version) ======
 let lightboxViewportEl: HTMLDivElement | null = null;
@@ -707,6 +709,7 @@ function setSpriteState(spr: SpriteWithMeta, active: boolean) {
 }
 
 async function openDocumentForMeta(meta: Doc) {
+    bindModalCloseOnce();
     const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
     const frame      = document.getElementById('docFrame')   as HTMLIFrameElement | null;
     const img        = document.getElementById('docImage')   as HTMLImageElement | null;
@@ -803,6 +806,38 @@ async function openDocumentForMeta(meta: Doc) {
 // make archives modal opener available to search.ts
 (window as any).__AA_openDocumentForMeta = (meta: Doc) => openDocumentForMeta(meta);
 
+let modalCloseBound = false;
+
+function bindModalCloseOnce() {
+    if (modalCloseBound) return;
+    modalCloseBound = true;
+
+    const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
+    const closeBtn   = document.getElementById('docPreviewClose') as HTMLButtonElement | null;
+    const frame      = document.getElementById('docFrame') as HTMLIFrameElement | null;
+    const img        = document.getElementById('docImage') as HTMLImageElement | null;
+
+    if (!docPreview) return;
+
+    const close = () => {
+        if (frame) frame.src = 'about:blank';
+        if (img) img.src = '';
+        resetZoom();
+        docPreview.style.display = 'none';
+        docPreview.setAttribute('aria-hidden', 'true');
+    };
+
+    closeBtn?.addEventListener('click', (e) => { e.preventDefault(); close(); });
+
+    docPreview.addEventListener('click', (e) => {
+        if (e.target === docPreview) close(); // backdrop close
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && docPreview.style.display !== 'none') close();
+    });
+}
+
 
 function selectSprite(spr: THREE.Sprite) {
     // ... selection ring stuff unchanged ...
@@ -832,21 +867,6 @@ function selectSprite(spr: THREE.Sprite) {
         void openDocumentForMeta(meta);   // fire and forget
         return false;
     };
-
-
-    // OPTIONAL: if you *do* still want a "View in Box (login required)" link,
-    // you can add a separate <a id="boxLink"> in the card and wire it like:
-    //
-    // const boxLinkEl = document.getElementById('boxLink') as HTMLAnchorElement | null;
-    // const boxUrl = BY_ID[String(meta.id)]?.url || meta.url || null;
-    // if (boxLinkEl && boxUrl) {
-    //     boxLinkEl.style.display = 'inline';
-    //     boxLinkEl.href = boxUrl;
-    //     boxLinkEl.target = '_blank';
-    //     boxLinkEl.rel = 'noopener noreferrer';
-    // } else if (boxLinkEl) {
-    //     boxLinkEl.style.display = 'none';
-    // }
 
     // Close button (safe to re-assign each time)
     const closeBtn = document.getElementById('docPreviewClose') as HTMLButtonElement | null;
@@ -936,13 +956,14 @@ function hideHint() {
 }
 
 const path = location.pathname;
-const isSearch =
-    path.endsWith('/search.html') || path.includes('/pages/search.html');
+const isSearch = path.endsWith('/search.html') || path.includes('/pages/search.html');
 
-if (isSearch) {
+if (!isSearch) {
+    init(); // only the archive/three page
+} else {
     (async () => {
         const mod = await import('./search');
         await mod.initSearch();
-    })();
+    })().catch(console.error);
 }
 

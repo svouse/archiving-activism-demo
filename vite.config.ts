@@ -1,15 +1,16 @@
-import { defineConfig } from "vite";
+import { defineConfig } from 'vite'
+import { resolve } from 'node:path'
 
 export default defineConfig({
-  base: "/",
+  base: '/',
   build: {
-    outDir: "docs",
-    emptyOutDir: true,
+    outDir: 'docs',
+    emptyOutDir: false,
     rollupOptions: {
-      output: {
-        entryFileNames: "assets/app.js",
-        inlineDynamicImports: true,
+      input: {
+        index: resolve(__dirname, 'index.html'),
+        search: resolve(__dirname, 'public/pages/search.html'),
       },
     },
   },
-});
+})
