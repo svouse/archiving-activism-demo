@@ -28,8 +28,20 @@
     .sort{border:1px solid rgba(255,255,255,.12);background:#171717;color:#eee;border-radius:10px;padding:8px 10px}
     .backlink{position:fixed;top:100px;right:16px;padding:8px 12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#eee;text-decoration:none;z-index:10}
   </style>
-  <script type="module" crossorigin src="/assets/main-BxceeQK_.js"></script>
+  <script type="module" crossorigin src="/assets/modulepreload-polyfill-B5Qt9EMX.js"></script>
+  <script type="module" crossorigin src="/assets/main-Bo09TYy-.js"></script>
 </head>
+<div id="docPreview" class="doc-preview" aria-hidden="true">
+  <div class="doc-preview__inner">
+    <button id="docPreviewClose" class="doc-preview__close" type="button">×</button>
+    <div id="docLoader" class="doc-loader">Loading…</div>
+    <div class="doc-image-viewport">
+      <img id="docImage" class="doc-image" alt="" />
+    </div>
+    <iframe id="docFrame" class="doc-frame" title="Document preview"></iframe>
+  </div>
+</div>
+
 <body>
 <header class="site-header">
   <div class="brand"><a href="/index.html">ARCHIVING ACTIVISM</a></div>
@@ -82,33 +94,10 @@
       <div id="eraChips" class="chips chips--eras" role="group" aria-label="Era filters"></div>
     </div>
 
-    <!-- Tags accordion -->
     <details class="tag-accordion" open>
       <summary>Filter by tag</summary>
       <div id="tagList" class="tags"></div>
     </details>
-  </div>
-
-  <div id="docPreview" class="doc-preview" aria-hidden="true">
-    <div class="doc-preview__inner">
-      <!-- close button -->
-      <button id="docPreviewClose" class="doc-preview__close" type="button">×</button>
-
-      <!-- optional tiny loader -->
-      <div id="docLoader" class="doc-loader">Loading…</div>
-
-      <!-- viewport that gets the zoom + pan handlers -->
-      <div class="doc-image-viewport">
-        <img id="docImage" class="doc-image" alt="" />
-      </div>
-
-      <!-- used only for PDFs / non-image docs -->
-      <iframe
-              id="docFrame"
-              class="doc-frame"
-              title="Document preview"
-      ></iframe>
-    </div>
   </div>
 
   <div id="meta" class="meta-line">0 results</div>

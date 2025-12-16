@@ -9,6 +9,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: resolve(__dirname, 'index.html'),
+        archives: resolve(__dirname, 'public/pages/archives.html'),
         search: resolve(__dirname, 'public/pages/search.html'),
       },
     },
