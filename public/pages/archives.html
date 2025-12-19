@@ -100,6 +100,15 @@
         <!-- close button -->
         <button id="docPreviewClose" class="doc-preview__close" type="button">×</button>
 
+        <!-- Previous button -->
+        <button id="docPrevBtn" class="doc-nav doc-nav--prev" type="button" style="display:none">‹</button>
+
+        <!-- Next button -->
+        <button id="docNextBtn" class="doc-nav doc-nav--next" type="button" style="display:none">›</button>
+
+        <!-- Page indicator -->
+        <div id="docPageIndicator" class="doc-page-indicator" style="display:none">1 / 1</div>
+
         <!-- optional tiny loader -->
         <div id="docLoader" class="doc-loader">Loading…</div>
 
@@ -109,11 +118,7 @@
         </div>
 
         <!-- used only for PDFs / non-image docs -->
-        <iframe
-                id="docFrame"
-                class="doc-frame"
-                title="Document preview"
-        ></iframe>
+        <iframe id="docFrame" class="doc-frame" title="Document preview"></iframe>
     </div>
 </div>
 
@@ -133,6 +138,6 @@
 </footer>
 
 <!-- three.js experience -->
-<script type="module" src="/assets/app.js"></script>
+<script type="module" src="/src/main.ts"></script>
 </body>
 </html>
