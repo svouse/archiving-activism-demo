@@ -1,111 +1,116 @@
-// ---------- Types ----------
-type FullRecord = {
-    id: string | number;
-    title?: string;
-    year?: number | null;
-    description?: string | null;
-    repository?: string | null;
-    tags?: string[] | string | null;
-    url?: string | null;
-    previewLocal?: string;
-    topics?: string[] | string | null;
-    hires?: string[];
-    schoolPrimary?: string | null;
-};
+// /src/search.ts
 
-type CloudItem = {
-    id: string | number;
-    title: string;
-    year: number | null;
-    repository: string | null;
-    mediaType: string | null;
-    description: string | null;
-    schoolPrimary: string | null;
-    schoolSecondary: string | null;
-    tags: string[] | string;
-    link: string | null;
-    previewLocal: string;
+/* ===========================
+   Types (matching main.ts)
+   =========================== */
+
+type YearRaw = number | string | null;
+
+type ArchiveRecord = {
+    id: number | string;
+    title?: string;
+    year?: YearRaw;
+    repository?: string | null;
+    location?: string | null;
+    mediaType?: 'image' | 'pdf' | string | null;
+    description?: string | null;
+    tags?: any;
+    hires?: any;
+    schoolPrimary?: string | null;
+    schoolSecondary?: string | null;
+    link?: string | null;
+    url?: string | null;
     documentDirect?: string | null;
 };
 
-type Doc = {
-    id: string | number;
+type RenderRecord = ArchiveRecord & {
+    id: number;
     title: string;
-    rawTitle: string;
-    year?: number | null;
-    url?: string | null;        // Box / external fallback
-    direct?: string | null;     // local pdf/image to open in-page
+    year: YearRaw;
+    yearLabel: string;
+    yearSort: number;
+    repository: string | null;
+    location: string | null;
+    mediaType: string | null;
+    description: string | null;
     tags: string[];
-    repo?: string | null;
-    iconURL: string;
-    description?: string | null;
+    hires: string[];
+    hiresLocalUrls: string[];
+    hiresRemoteRaw: string[];
+    previewKind: 'images' | 'pdf' | 'none';
+    previewUrls: string[];
+    iconUrl: string;
 };
 
-// ---------- Era ranges ----------
+type Doc = {
+    id: number;
+    title: string;
+    rawTitle: string;
+    year: YearRaw;
+    repo: string | null;
+    description: string | null;
+    tags: string[];
+    iconURL: string;
+    schoolPrimary: string | null;
+};
+
+/* ===========================
+   Config
+   =========================== */
+
+const BASE = import.meta.env.BASE_URL || '/';
+
+const BYID_CANDIDATES = [
+    BASE + 'data/resources.byId.json',
+    '/data/resources.byId.json',
+];
+
+const HIRES_BASE_CANDIDATES = [
+    BASE + 'hires/',
+    '/hires/',
+];
+
 const PERIODS: Record<'precursors' | 'thick' | 'today', [number, number]> = {
     precursors: [1940, 1959],
     thick: [1960, 1989],
     today: [1990, 2100],
 };
+
 type EraKey = keyof typeof PERIODS;
 
-// ---------- Utilities ----------
-const base = import.meta.env.BASE_URL || '/';
+const IMAGE_EXT_RE = /\.(png|jpe?g|webp|gif|avif|tiff?|heic)$/i;
+const PDF_EXT_RE = /\.pdf$/i;
 
-function numericYear(y: unknown): number | null {
-    if (typeof y === 'number' && Number.isFinite(y)) return y;
-    if (typeof y === 'string') {
-        const n = parseInt(y, 10);
-        return Number.isFinite(n) ? n : null;
-    }
-    return null;
-}
+const isHttpUrl = (s: string) => /^https?:\/\//i.test(String(s || ''));
+const encodePath = (p: string) => String(p || '').split('/').map(encodeURIComponent).join('/');
 
-function cleanFileDisplay(name: string): string {
-    const base = name.split('/').pop() || name;
-    const noExt = base.replace(/\.[a-z0-9]+$/i, '');
-    const parts = noExt.split('_');
-    const kept = parts.slice(3).join(' ').replace(/[-]+/g, ' ');
-    return kept.replace(/\s+/g, ' ').trim();
-}
+/* ===========================
+   State
+   =========================== */
 
-function coerceTags(recTags: any, itemTags: any, topics?: any): string[] {
-    const out: string[] = [];
-    const pushAny = (val: any) => {
-        if (!val) return;
-        if (Array.isArray(val)) {
-            val.forEach(v => typeof v === 'string' && out.push(v));
-        } else if (typeof val === 'string') {
-            val.split(/[;,]/).forEach(s => out.push(s));
-        }
-    };
-    pushAny(recTags);
-    pushAny(itemTags);
-    if (out.length === 0) pushAny(topics);
-
-    const cleaned = out
-        .map(t => t.trim())
-        .filter(t => t.length > 0)
-        .filter(t => t.length <= 40 && t.split(/\s+/).length <= 5)
-        .reduce<string[]>((acc, cur) => {
-            const key = cur.toLowerCase();
-            if (!acc.some(x => x.toLowerCase() === key)) acc.push(cur);
-            return acc;
-        }, []);
-    return cleaned;
-}
-
-// ---------- Data / State ----------
-let CLOUD: CloudItem[] = [];
-let BY_ID: Record<string, FullRecord> = {};
+let BY_ID: Record<string, ArchiveRecord> = {};
+let RENDER_BY_ID: Record<string, RenderRecord> = {};
 let DOCS: Doc[] = [];
+let HIRES_BASE = BASE + 'hires/';
 
-let q = '';
+let searchQuery = '';
 const activeTags = new Set<string>();
 let allTags: string[] = [];
 let activeEra: EraKey | null = null;
 
-// ---------- DOM (queried at init time) ----------
+/* ===========================
+   Modal state (NEW)
+   =========================== */
+
+let modalCloseBound = false;
+let modalPages: string[] = [];
+let modalPageIndex = 0;
+let docClickBound = false;
+
+/* ===========================
+   DOM refs
+   =========================== */
+
 const els = {
     q: null as HTMLInputElement | null,
     clear: null as HTMLButtonElement | null,
@@ -116,96 +121,386 @@ const els = {
     eraChips: null as HTMLDivElement | null,
 };
 
-// ---------- Public init (called from main.ts) ----------
-export async function initSearch() {
-    // Get elements (IDs must exist in search.html)
-    els.q       = document.getElementById('q') as HTMLInputElement | null;
-    els.clear   = document.getElementById('clear') as HTMLButtonElement | null;
-    els.tagList = document.getElementById('tagList') as HTMLDivElement | null;
-    els.meta    = document.getElementById('meta') as HTMLDivElement | null;
-    els.results = document.getElementById('results') as HTMLDivElement | null;
-    els.sort    = document.getElementById('sort') as HTMLSelectElement | null;
-    els.eraChips= document.getElementById('eraChips') as HTMLDivElement | null;
+/* ===========================
+   Utilities (from main.ts)
+   =========================== */
 
-    // Hard guard: if core elements missing, don’t continue
-    if (!els.results || !els.q || !els.sort || !els.tagList) {
-        console.warn('[search] Missing required DOM (#results, #q, #sort, #tagList). Check search.html IDs.');
+function numericYear(y: YearRaw): number | null {
+    if (typeof y === 'number' && Number.isFinite(y)) return y;
+    if (typeof y === 'string') {
+        const n = parseInt(y, 10);
+        return Number.isFinite(n) ? n : null;
+    }
+    return null;
+}
+
+function yearToLabel(y: YearRaw): string {
+    if (typeof y === 'number') return String(y);
+    if (typeof y === 'string' && y.trim()) return y.trim();
+    return '—';
+}
+
+function yearToSort(y: YearRaw): number {
+    if (typeof y === 'number') return y;
+    if (typeof y === 'string') {
+        const m = y.match(/\b(18|19|20)\d{2}\b/);
+        if (m) return Number(m[0]);
+    }
+    return Number.POSITIVE_INFINITY;
+}
+
+function normalizeByIdShape(raw: any): Record<string, ArchiveRecord> {
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw as Record<string, ArchiveRecord>;
+    if (Array.isArray(raw)) {
+        const out: Record<string, ArchiveRecord> = {};
+        for (const r of raw) {
+            if (!r) continue;
+            const id = String((r as any).id);
+            if (!id || id === 'undefined') continue;
+            out[id] = r as ArchiveRecord;
+        }
+        return out;
+    }
+    return {};
+}
+
+function cleanFileDisplay(name: string): string {
+    const base = String(name || '').split('/').pop() || String(name || '');
+    const noExt = base.replace(/\.[a-z0-9]+$/i, '');
+    const parts = noExt.split('_');
+    const kept = parts.slice(3).join(' ').replace(/[-]+/g, ' ');
+    return kept.replace(/\s+/g, ' ').trim();
+}
+
+function normalizeFilename(raw: string): string {
+    let s = String(raw ?? '').trim();
+    while ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+        s = s.slice(1, -1).trim();
+    }
+    s = s.replace(/\s+\.(png|jpe?g|webp|gif|avif|tiff?|heic|pdf)\b/gi, '.$1');
+    s = s.replace(/\s{2,}/g, ' ');
+    s = s.replace(/^hires[\/\\]/i, '').replace(/^\/+/, '');
+    return s;
+}
+
+function hiresFilenameToUrl(filename: string): string {
+    const clean = normalizeFilename(filename);
+    return HIRES_BASE + encodePath(clean);
+}
+
+function isImageUrl(url: string): boolean {
+    const clean = String(url || '').split(/[?#]/)[0];
+    return IMAGE_EXT_RE.test(clean);
+}
+
+function isPdfUrl(url: string): boolean {
+    const clean = String(url || '').split(/[?#]/)[0];
+    return PDF_EXT_RE.test(clean);
+}
+
+async function fetchJsonFirst<T>(candidates: string[], label: string): Promise<{ url: string; data: T }> {
+    const errs: string[] = [];
+    for (const url of candidates) {
+        try {
+            const res = await fetch(url, { cache: 'no-store' });
+            if (!res.ok) {
+                errs.push(`${url} -> ${res.status}`);
+                continue;
+            }
+            const data = (await res.json()) as T;
+            console.log(`[search] loaded ${label} from`, url);
+            return { url, data };
+        } catch (e: any) {
+            errs.push(`${url} -> ${String(e?.message || e)}`);
+        }
+    }
+    throw new Error(`[search] failed to load ${label}. Tried:\n- ${errs.join('\n- ')}`);
+}
+
+async function pickFirstExistingBase(candidates: string[], testFile: string): Promise<string> {
+    for (const base of candidates) {
+        const url = base + encodePath(testFile);
+        try {
+            const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+            if (res.ok) return base;
+        } catch {
+            // ignore
+        }
+    }
+    return candidates[0] || (BASE + 'hires/');
+}
+
+/* ===========================
+   Build render records + docs
+   =========================== */
+
+function buildRenderRecords(byId: Record<string, ArchiveRecord>): RenderRecord[] {
+    const out: RenderRecord[] = [];
+
+    for (const r0 of Object.values(byId)) {
+        if (!r0) continue;
+
+        const idNum = Number((r0 as any).id);
+        if (!Number.isFinite(idNum)) continue;
+
+        const title = String((r0 as any).title || 'Untitled');
+        const year = ((r0 as any).year ?? null) as YearRaw;
+
+        const hiresArr = Array.isArray((r0 as any).hires) ? ((r0 as any).hires as any[]) : [];
+        const hires: string[] = hiresArr.map((h) => String(h ?? '').trim()).filter(Boolean);
+
+        const hiresRemoteRaw: string[] = [];
+        const hiresLocalUrls: string[] = [];
+
+        for (const h of hires) {
+            if (isHttpUrl(h)) {
+                hiresRemoteRaw.push(h);
+                continue;
+            }
+            hiresLocalUrls.push(hiresFilenameToUrl(h));
+        }
+
+        const localPdfUrls = hiresLocalUrls.filter((u) => isPdfUrl(u));
+        const localImageUrls = hiresLocalUrls.filter((u) => isImageUrl(u));
+
+        let previewKind: RenderRecord['previewKind'] = 'none';
+        let previewUrls: string[] = [];
+
+        if (localPdfUrls.length) {
+            previewKind = 'pdf';
+            previewUrls = localPdfUrls.slice(0, 1);
+        } else if (localImageUrls.length) {
+            previewKind = 'images';
+            previewUrls = localImageUrls;
+        }
+
+        const iconUrl = localImageUrls[0] || '';
+
+        out.push({
+            ...r0,
+            id: idNum,
+            title,
+            year,
+            yearLabel: yearToLabel(year),
+            yearSort: yearToSort(year),
+            repository: (r0 as any).repository ?? null,
+            location: (r0 as any).location ?? null,
+            mediaType: (r0 as any).mediaType ?? null,
+            description: (r0 as any).description ?? null,
+            tags: Array.isArray((r0 as any).tags) ? ((r0 as any).tags as any[]).map(String) : [],
+            hires,
+            hiresLocalUrls,
+            hiresRemoteRaw,
+            previewKind,
+            previewUrls,
+            iconUrl,
+        });
+    }
+
+    out.sort((a, b) => a.id - b.id);
+    return out;
+}
+
+function buildDocsFromRender(renderList: RenderRecord[]): Doc[] {
+    return renderList.map((r) => {
+        const rawTitle = r.title || 'Untitled';
+        const displayTitle = /_/.test(rawTitle) ? cleanFileDisplay(rawTitle) : rawTitle.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+
+        return {
+            id: r.id,
+            title: displayTitle,
+            rawTitle,
+            year: r.year ?? null,
+            repo: r.repository ?? null,
+            description: r.description ?? null,
+            tags: r.tags ?? [],
+            iconURL: r.iconUrl || '',
+            schoolPrimary: (r as any).schoolPrimary ?? null,
+        };
+    });
+}
+
+function buildTagSet(docs: Doc[]): string[] {
+    const tagSet = new Set<string>();
+    docs.forEach(d => {
+        (d.tags || []).forEach(t => tagSet.add(String(t)));
+    });
+    return Array.from(tagSet).sort();
+}
+
+/* ===========================
+   Data loading
+   =========================== */
+
+async function loadSearchData() {
+    const byIdResp = await fetchJsonFirst<any>(BYID_CANDIDATES, 'resources.byId.json');
+    BY_ID = normalizeByIdShape(byIdResp.data);
+
+    const renderList = buildRenderRecords(BY_ID);
+    RENDER_BY_ID = Object.fromEntries(renderList.map((r) => [String(r.id), r]));
+    DOCS = buildDocsFromRender(renderList);
+
+    const anyLocal = renderList
+        .flatMap((r) => r.hires || [])
+        .map((h) => String(h || '').trim())
+        .find((h) => h && !isHttpUrl(h));
+
+    if (anyLocal) {
+        HIRES_BASE = await pickFirstExistingBase(HIRES_BASE_CANDIDATES, normalizeFilename(anyLocal));
+    } else {
+        HIRES_BASE = HIRES_BASE_CANDIDATES[0] || (BASE + 'hires/');
+    }
+
+    // Rebuild with correct HIRES_BASE
+    const renderList2 = buildRenderRecords(BY_ID);
+    RENDER_BY_ID = Object.fromEntries(renderList2.map((r) => [String(r.id), r]));
+    DOCS = buildDocsFromRender(renderList2);
+
+    console.log('[search] Loaded', DOCS.length, 'documents');
+}
+
+/* ===========================
+   Modal functions (NEW)
+   =========================== */
+
+function bindModalCloseOnce() {
+    if (modalCloseBound) return;
+    modalCloseBound = true;
+
+    const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
+    const closeBtn = document.getElementById('docPreviewClose') as HTMLButtonElement | null;
+    const prevBtn = document.getElementById('docPrevBtn') as HTMLButtonElement | null;
+    const nextBtn = document.getElementById('docNextBtn') as HTMLButtonElement | null;
+    const frame = document.getElementById('docFrame') as HTMLIFrameElement | null;
+    const img = document.getElementById('docImage') as HTMLImageElement | null;
+
+    if (!docPreview) {
+        console.error('[modal] #docPreview not found');
         return;
     }
 
-    // Load data
-    const { cloud, byId } = await loadSearchData();
-    CLOUD = cloud;
-    BY_ID = byId;
-
-    // Build model + UI
-    DOCS = buildDocs(CLOUD, BY_ID);
-    allTags = buildTagSet(DOCS);
-
-    readParams();            // <-- move up
-    renderTagList(allTags);
-    renderEraChips();
-
-    bindUI();
-    bindDocOpen();
-    applyFilters();
-}
-
-function isImageUrl(url: string | null | undefined): boolean {
-    if (!url) return false;
-    const clean = url.split(/[?#]/)[0].toLowerCase();
-    return /\.(jpe?g|png|webp|gif|tiff?|heic)$/.test(clean);
-}
-
-function openDocModal(url: string) {
-    const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
-    const frame      = document.getElementById('docFrame') as HTMLIFrameElement | null;
-    const img        = document.getElementById('docImage') as HTMLImageElement | null;
-    const loaderEl   = document.getElementById('docLoader') as HTMLDivElement | null;
-    const imgViewport= document.querySelector('.doc-image-viewport') as HTMLDivElement | null;
-
-    if (!docPreview || (!frame && !img)) return;
-
-    docPreview.style.display = 'flex';
-    docPreview.setAttribute('aria-hidden', 'false');
-    if (loaderEl) loaderEl.classList.remove('is-hidden');
-
-    // reset
-    if (imgViewport) imgViewport.style.display = 'none';
-    if (img) { img.style.display = 'none'; img.src = ''; img.classList.remove('is-loaded'); }
-    if (frame) { frame.style.display = 'none'; frame.src = 'about:blank'; }
-
-    const showImage = (u: string) => {
-        if (!img || !imgViewport) return;
-        imgViewport.style.display = 'block';
-        img.style.display = 'block';
-        img.src = u;
-        if (frame) { frame.style.display = 'none'; frame.src = 'about:blank'; }
-        if (loaderEl) loaderEl.classList.add('is-hidden');
-        requestAnimationFrame(() => img.classList.add('is-loaded'));
+    const close = () => {
+        if (frame) frame.src = 'about:blank';
+        if (img) img.src = '';
+        modalPages = [];
+        modalPageIndex = 0;
+        docPreview.style.display = 'none';
+        docPreview.setAttribute('aria-hidden', 'true');
     };
 
-    const showFrame = (u: string) => {
-        if (!frame) return;
-        frame.style.display = 'block';
-        frame.src = u;
-        if (imgViewport) imgViewport.style.display = 'none';
-        if (img) { img.style.display = 'none'; img.src = ''; img.classList.remove('is-loaded'); }
-        if (loaderEl) loaderEl.classList.add('is-hidden');
-    };
+    closeBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        close();
+    });
 
-    if (isImageUrl(url)) {
-        const pre = new Image();
-        pre.onload = () => showImage(url);
-        pre.onerror = () => { if (loaderEl) loaderEl.classList.add('is-hidden'); };
-        pre.src = url;
-    } else {
-        // pdf or other
-        showFrame(url);
+    prevBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        modalPrevPage();
+    });
+
+    nextBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        modalNextPage();
+    });
+
+    docPreview.addEventListener('click', (e) => {
+        if (e.target === docPreview) close();
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if (docPreview.getAttribute('aria-hidden') !== 'true') {
+            if (e.key === 'Escape') {
+                close();
+                return;
+            }
+
+            if (modalPages.length > 1) {
+                if (e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    modalNextPage();
+                } else if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    modalPrevPage();
+                }
+            }
+        }
+    });
+}
+
+function modalPrevPage() {
+    if (modalPageIndex > 0) {
+        modalPageIndex--;
+        showCurrentModalPage();
     }
 }
 
-let docClickBound = false;
+function modalNextPage() {
+    if (modalPageIndex < modalPages.length - 1) {
+        modalPageIndex++;
+        showCurrentModalPage();
+    }
+}
+
+function showCurrentModalPage() {
+    if (!modalPages.length) return;
+
+    const img = document.getElementById('docImage') as HTMLImageElement | null;
+    const imgViewport = document.querySelector('.doc-image-viewport') as HTMLDivElement | null;
+    const loaderEl = document.getElementById('docLoader') as HTMLDivElement | null;
+
+    if (!img || !imgViewport) return;
+
+    const url = modalPages[modalPageIndex];
+
+    loaderEl?.classList.remove('is-hidden');
+    img.classList.remove('is-loaded');
+
+    const pre = new Image();
+    pre.onload = () => {
+        img.src = url;
+        loaderEl?.classList.add('is-hidden');
+        requestAnimationFrame(() => img.classList.add('is-loaded'));
+        updateModalNavButtons();
+    };
+    pre.onerror = () => {
+        console.error('[modal] Failed to load image', url);
+        loaderEl?.classList.add('is-hidden');
+    };
+    pre.src = url;
+}
+
+function updateModalNavButtons() {
+    const prevBtn = document.getElementById('docPrevBtn');
+    const nextBtn = document.getElementById('docNextBtn');
+    const pageIndicator = document.getElementById('docPageIndicator');
+
+    if (!prevBtn || !nextBtn) return;
+
+    if (modalPages.length > 1) {
+        prevBtn.style.display = 'block';
+        nextBtn.style.display = 'block';
+
+        (prevBtn as HTMLButtonElement).disabled = modalPageIndex === 0;
+        (nextBtn as HTMLButtonElement).disabled = modalPageIndex === modalPages.length - 1;
+
+        if (pageIndicator) {
+            pageIndicator.style.display = 'block';
+            pageIndicator.textContent = `${modalPageIndex + 1} / ${modalPages.length}`;
+        }
+    } else {
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+        if (pageIndicator) pageIndicator.style.display = 'none';
+    }
+}
+
+/* ===========================
+   Modal binding (MODIFIED - THIS IS THE KEY FIX)
+   =========================== */
+
 function bindDocOpen() {
     if (docClickBound) return;
     docClickBound = true;
@@ -216,129 +511,116 @@ function bindDocOpen() {
 
         e.preventDefault();
 
+        const id = a.dataset.docId!;
+        const d = DOCS.find(x => String(x.id) === id);
+        if (!d) return;
+
+        // Get the render record to access previewUrls
+        const rr = RENDER_BY_ID[String(d.id)];
+
+        // CRITICAL FIX: Store preview URLs on window so main.ts can access them
+        if (rr?.previewKind === 'images' && rr.previewUrls.length > 0) {
+            (window as any).__AA_previewUrls = rr.previewUrls;
+            console.log('[search] Setting preview URLs:', rr.previewUrls);
+        } else {
+            (window as any).__AA_previewUrls = null;
+        }
+
         const open = (window as any).__AA_openDocumentForMeta as ((meta: any) => Promise<void> | void) | undefined;
         if (!open) {
             console.warn('[search] __AA_openDocumentForMeta not found on window');
             return;
         }
 
-        const id = a.dataset.docId!;
-        const d = DOCS.find(x => String(x.id) === id);
-        if (!d) return;
-
-        // minimal "meta" shape main.ts expects (it uses id + iconURL + title/year/repo/desc for hires guessing)
         const meta = {
             id: d.id,
             title: d.rawTitle || d.title || 'Untitled',
             year: d.year ?? null,
-            url: d.url ?? null,
-            documentDirect: d.direct ?? null,   // <-- ADD THIS
             tags: d.tags ?? [],
             repo: d.repo ?? null,
             iconURL: d.iconURL,
             description: d.description ?? null,
+            schoolPrimary: d.schoolPrimary ?? null,
         };
 
         void open(meta);
     });
 }
 
-// ---------- Data loader (from /public/data) ----------
-async function loadSearchData() {
-    const [cloud, byId] = await Promise.all([
-        fetch(base + 'data/cloud.resources.json').then(r => r.json()),
-        fetch(base + 'data/resources.byId.json').then(r => r.json()),
-    ]);
-    return { cloud, byId };
+/* ===========================
+   UI wiring
+   =========================== */
+
+function initDomRefs() {
+    els.q = document.getElementById('q') as HTMLInputElement | null;
+    els.clear = document.getElementById('clear') as HTMLButtonElement | null;
+    els.tagList = document.getElementById('tagList') as HTMLDivElement | null;
+    els.meta = document.getElementById('meta') as HTMLDivElement | null;
+    els.results = document.getElementById('results') as HTMLDivElement | null;
+    els.sort = document.getElementById('sort') as HTMLSelectElement | null;
+    els.eraChips = document.getElementById('eraChips') as HTMLDivElement | null;
+
+    if (!els.results || !els.q || !els.sort || !els.tagList) {
+        console.error('[search] Missing required DOM elements');
+        return false;
+    }
+    return true;
 }
 
-function resolveUrl(u: string | null | undefined): string | null {
-    if (!u) return null;
-
-    // already absolute or special
-    if (/^(https?:)?\/\//.test(u) || u.startsWith('data:') || u.startsWith('blob:')) return u;
-
-    // make relative-to-base
-    const clean = u.replace(/^\/+/, '');
-    return base + clean;
-}
-
-
-// ---------- Build docs ----------
-function buildDocs(cloud: CloudItem[], byId: Record<string, FullRecord>): Doc[] {
-    return cloud.map(it => {
-        const rec = byId[String(it.id)];
-        const rawTitle = rec?.title || it.title || 'Untitled';
-        const display = /_/.test(rawTitle) ? cleanFileDisplay(rawTitle) : rawTitle;
-        const tags = coerceTags(rec?.tags, it.tags, rec?.topics);
-
-        const direct = resolveUrl(
-            it.documentDirect ||
-            (rec as any)?.hires?.[0] ||
-            null
-        );
-
-        const url = resolveUrl(
-            rec?.url ||
-            it.link ||
-            null
-        );
-
-        const iconURL = resolveUrl(it.previewLocal) || it.previewLocal;
-
-        return {
-            id: it.id,
-            title: display,
-            rawTitle,
-            year: (numericYear(it.year) ?? numericYear(rec?.year)) ?? null,
-            direct,
-            url,
-            tags,
-            repo: rec?.repository ?? it.repository ?? null,
-            iconURL,
-            description: rec?.description ?? it.description ?? null,
-        };
-    });
-}
-
-function buildTagSet(docs: Doc[]): string[] {
-    return ["Direct Activism & Advocacy",
-        "Pedagogy & Training",
-        "Public Education",
-        "University-Based Politics",
-    ];
-}
-
-// ---------- UI wiring ----------
 function bindUI() {
-    els.q!.addEventListener('input', () => { q = els.q!.value; applyFilters(); });
-    els.clear && els.clear.addEventListener('click', () => { q = ''; els.q!.value = ''; applyFilters(); });
+    els.q!.addEventListener('input', () => {
+        searchQuery = els.q!.value;
+        applyFilters();
+    });
+
+    els.clear?.addEventListener('click', () => {
+        searchQuery = '';
+        els.q!.value = '';
+        applyFilters();
+    });
+
     els.sort!.addEventListener('change', applyFilters);
 }
 
 function readParams() {
     const p = new URLSearchParams(location.search);
-    const pq = p.get('q'); if (pq){ q = pq; els.q!.value = pq; }
+    const pq = p.get('q');
+    if (pq) {
+        searchQuery = pq;
+        els.q!.value = pq;
+    }
+
     const ptags = (p.get('tags') || '').split(',').filter(Boolean);
     ptags.forEach(t => activeTags.add(t));
+
     const s = p.get('sort');
-    if (s && ['relevance','year-desc','year-asc','title-asc'].includes(s)) els.sort!.value = s as any;
+    if (s && ['relevance', 'year-desc', 'year-asc', 'title-asc'].includes(s)) {
+        els.sort!.value = s;
+    }
+
     const era = p.get('era') as EraKey | null;
-    if (era && PERIODS[era]) activeEra = era;
+    if (era && PERIODS[era]) {
+        activeEra = era;
+    }
 }
 
 function syncParams(list: Doc[]) {
     if (!els.meta) return;
+
     const p = new URLSearchParams();
-    if (q) p.set('q', q);
+    if (searchQuery) p.set('q', searchQuery);
     if (activeTags.size) p.set('tags', Array.from(activeTags).join(','));
     if (activeEra) p.set('era', activeEra);
     p.set('sort', els.sort!.value);
+
     history.replaceState({}, '', `${location.pathname}?${p}`);
     els.meta.textContent = `${list.length} result${list.length === 1 ? '' : 's'}`;
 }
 
-// ---------- Renderers ----------
+/* ===========================
+   Render functions
+   =========================== */
+
 function renderTagList(tags: string[]) {
     els.tagList!.innerHTML = '';
     tags.forEach(t => {
@@ -350,7 +632,8 @@ function renderTagList(tags: string[]) {
         box.value = t;
         box.checked = activeTags.has(t);
         box.addEventListener('change', () => {
-            if (box.checked) activeTags.add(t); else activeTags.delete(t);
+            if (box.checked) activeTags.add(t);
+            else activeTags.delete(t);
             applyFilters();
         });
         const span = document.createElement('span');
@@ -365,10 +648,10 @@ function renderEraChips() {
     if (!els.eraChips) return;
     els.eraChips.innerHTML = '';
 
-    const defs: {key: EraKey, title: string, sub: string}[] = [
-        { key: 'precursors', title: 'Precursors',               sub: '1940s–1950s' },
-        { key: 'thick',      title: 'In the Thick of the Struggle', sub: '1960s–1980s' },
-        { key: 'today',      title: 'Student Organizing Today', sub: '1990s–present' },
+    const defs: { key: EraKey; title: string; sub: string }[] = [
+        { key: 'precursors', title: 'Precursors', sub: '1940s–1950s' },
+        { key: 'thick', title: 'In the Thick of the Struggle', sub: '1960s–1980s' },
+        { key: 'today', title: 'Student Organizing Today', sub: '1990s–present' },
     ];
 
     defs.forEach(def => {
@@ -377,7 +660,7 @@ function renderEraChips() {
         btn.className = 'chip';
         if (activeEra === def.key) btn.classList.add('is-active');
         btn.setAttribute('data-era', def.key);
-        btn.innerHTML = `<span>${def.title}</span><span class="sub">${def.sub}</span>`;
+        btn.innerHTML = `<span class="chip__title">${def.title}</span><span class="chip__sub">${def.sub}</span>`;
         btn.addEventListener('click', () => {
             activeEra = (activeEra === def.key) ? null : def.key;
             Array.from(els.eraChips!.querySelectorAll('.chip')).forEach(el => el.classList.remove('is-active'));
@@ -388,12 +671,16 @@ function renderEraChips() {
     });
 }
 
-// ---------- Filtering / Sorting ----------
+/* ===========================
+   Filtering / Sorting
+   =========================== */
+
 function matchesText(d: Doc, query: string): boolean {
     if (!query.trim()) return true;
     const hay = [
         (d.title || '').toLowerCase(),
         (d.description || '').toLowerCase(),
+        (d.repo || '').toLowerCase(),
         ...(d.tags || []).map(t => String(t).toLowerCase()),
     ];
     const toks = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -403,7 +690,9 @@ function matchesText(d: Doc, query: string): boolean {
 function matchesTags(d: Doc): boolean {
     if (!activeTags.size) return true;
     const set = new Set((d.tags || []).map(x => String(x).toLowerCase()));
-    for (const t of activeTags) if (!set.has(String(t).toLowerCase())) return false;
+    for (const t of activeTags) {
+        if (!set.has(String(t).toLowerCase())) return false;
+    }
     return true;
 }
 
@@ -419,16 +708,18 @@ function scoreRelevance(d: Doc, query: string): number {
     const ql = query.toLowerCase();
     let score = 0;
     const title = (d.title || '').toLowerCase();
-    const desc  = (d.description || '').toLowerCase();
+    const desc = (d.description || '').toLowerCase();
     if (title.includes(ql)) score += 5;
-    if (desc.includes(ql))  score += 2;
-    (d.tags || []).forEach(t => { if (String(t).toLowerCase().includes(ql)) score += 1; });
+    if (desc.includes(ql)) score += 2;
+    (d.tags || []).forEach(t => {
+        if (String(t).toLowerCase().includes(ql)) score += 1;
+    });
     return score;
 }
 
 function applyFilters() {
     const filtered = DOCS.filter(d =>
-        matchesText(d, q) &&
+        matchesText(d, searchQuery) &&
         matchesTags(d) &&
         matchesEra(d)
     );
@@ -436,9 +727,9 @@ function applyFilters() {
     const sort = els.sort!.value;
     filtered.sort((a, b) => {
         if (sort === 'year-desc') return (numericYear(b.year) ?? -1) - (numericYear(a.year) ?? -1);
-        if (sort === 'year-asc')  return (numericYear(a.year) ??  1) - (numericYear(b.year) ??  1);
+        if (sort === 'year-asc') return (numericYear(a.year) ?? 1) - (numericYear(b.year) ?? 1);
         if (sort === 'title-asc') return (a.title || '').localeCompare(b.title || '');
-        return scoreRelevance(b, q) - scoreRelevance(a, q);
+        return scoreRelevance(b, searchQuery) - scoreRelevance(a, searchQuery);
     });
 
     syncParams(filtered);
@@ -464,6 +755,7 @@ function renderResults(list: Doc[]) {
         img.src = d.iconURL;
 
         const tags = document.createElement('div');
+        tags.className = 'tags';
         (d.tags || []).slice(0, 10).forEach(t => {
             const pill = document.createElement('span');
             pill.className = 'pill';
@@ -483,4 +775,25 @@ function renderResults(list: Doc[]) {
         card.appendChild(link);
         els.results!.appendChild(card);
     });
+}
+
+/* ===========================
+   Public init
+   =========================== */
+
+export async function initSearch() {
+    if (!initDomRefs()) return;
+
+    await loadSearchData();
+
+    allTags = buildTagSet(DOCS);
+
+    readParams();
+    renderTagList(allTags);
+    renderEraChips();
+
+    bindUI();
+    bindModalCloseOnce();  // Set up modal controls
+    bindDocOpen();
+    applyFilters();
 }

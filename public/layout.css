@@ -228,41 +228,113 @@ a.lightbox-link {
 
 /* --- Footer --- */
 .site-footer {
-    background-color: rgba(var(--coral), 0.2);
+    background-color: rgba(239, 111, 108, 0.08); /* subtle coral tint */
     border-top: 1px solid #222;
     width: 100%;
+    padding: 40px 20px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.footer-inner {
-    max-width: 1100px;
-    margin: 0 auto;
-    display: inline-flex;
+.site-footer > div {
+    max-width: 600px;
+    width: 100%;
+    text-align: center;
 }
 
-.footer-inner p {
-    margin: 0 0 8px 0;
+.site-footer > div > p {
+    text-align: center;
+    margin: 0 0 20px 0;
     font-weight: 700;
+    color: #d4d4d4;
 }
 
-.footer-inner .funders {
-    display: flex;
-    gap: 30px;
+/* Logo container - proper 2 row grid layout */
+.site-footer .logos {
+    display: grid;
+
+    /* make columns size to content so row-2 logos sit closer */
+    grid-template-columns: max-content max-content;
+    grid-template-rows: auto auto;
+
+    /* control the spacing between the two bottom logos */
+    column-gap: 14px;
+    row-gap: 20px;
+
+    /* center the whole grid */
+    justify-content: center;
     align-items: center;
-    flex-wrap: wrap;
+    justify-items: center;
+
+    margin: 0 auto;
+    padding: 0;
+    width: fit-content;   /* optional but helps prevent “spread” */
+    max-width: 100%;
 }
 
-.footer-inner .funders img {
-    height: 28px;
-    opacity: .9;
+
+/* Individual logo styling */
+.site-footer .logos img {
+    height: 72px;
+    width: auto;
+    padding: 8px 8px;
+    border: 1px solid rgba(210, 199, 177, 0.2); /* soft tan border */
+    border-radius: 15px; /* rounded corners */
+    filter: sepia(58%) brightness(.96) saturate(0.9);
 }
 
-.footer-inner .copyright {
-    margin: 16px 0 0 0;
-    font-size: 12px;
-    opacity: .8;
+/* CCI logo - first row, spans both columns, larger */
+.site-footer .logos img:nth-child(2) {
+    grid-column: 1 / -1; /* span both columns */
+    grid-row: 1;
+    height: 86px;
+}
+
+/* AADS - second row, left column */
+.site-footer .logos img:nth-child(1) {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+/* NHPRC - second row, right column */
+.site-footer .logos img:nth-child(3) {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+/* Copyright text */
+.site-footer .copyright {
+    margin: 24px 0 0 0;
+    font-size: 13px;
+    opacity: 0.7;
+    color: #d4d4d4;
+}
+
+/* Mobile adjustments */
+@media (max-width: 600px) {
+    .site-footer {
+        padding: 32px 16px;
+    }
+
+    .site-footer .logos {
+        grid-template-columns: 1fr; /* single column on mobile */
+        grid-template-rows: auto auto auto; /* 3 rows */
+    }
+
+    /* Reset grid positioning for mobile - stack vertically */
+    .site-footer .logos img:nth-child(1),
+    .site-footer .logos img:nth-child(2),
+    .site-footer .logos img:nth-child(3) {
+        grid-column: 1;
+        grid-row: auto;
+        height: 55px;
+    }
+
+    /* CCI still slightly bigger on mobile */
+    .site-footer .logos img:nth-child(2) {
+        height: 65px;
+    }
 }
 
 /* --- Link Row (Home) --- */
@@ -325,25 +397,106 @@ a.lightbox-link {
     margin: 40px;/* inner padding only */
 }
 
-/* headings inside the panel */
-.section-panel h2,
-.section-panel h3 {
-    color: #1b1208;
+/* Acknowledgements grid — sample-image style */
+/* 5-col desktop grid (keeps everything consistent) */
+.ack-grid{
+    display: grid;
+    grid-template-columns: repeat(5, minmax(210px, 1fr));
+    gap: 22px 34px;
+    margin-top: 18px;
+    justify-items: center;
 }
 
-/* lists spacing inside panel */
-.section-panel ul {
-    margin-top: 12px;
+/* Make every ack “card” a consistent width (prevents funders from looking wider) */
+.ack-item{
+    text-align: center;
+    width: 240px;          /* tune 220–260 */
+    max-width: 240px;
 }
 
-/* links inside the panel, if any */
-.section-panel a {
-    color: #3a2211;
+/* Funders: put 2 items in the centered columns (2 and 4), but keep same width */
+.ack-group--funders + .ack-item--funder{            /* first funder */
+    grid-column: 2;
+}
+.ack-group--funders + .ack-item--funder + .ack-item--funder{ /* second funder */
+    grid-column: 4;
+}
+
+/* Center the last Community Partners entry (Stephanie) in the middle column */
+.ack-item--center{
+    grid-column: 3;
+}
+
+/* Section headers centered */
+.ack-group{
+    grid-column: 1 / -1;
+    text-align: center;
+}
+
+
+/* Responsive steps (same layout, fewer columns) */
+@media (max-width: 1180px){
+    .ack-grid{ grid-template-columns: repeat(4, minmax(210px, 1fr)); }
+}
+@media (max-width: 980px){
+    .ack-grid{ grid-template-columns: repeat(3, minmax(210px, 1fr)); }
+}
+@media (max-width: 740px){
+    .ack-grid{ grid-template-columns: repeat(2, minmax(210px, 1fr)); }
+}
+@media (max-width: 520px){
+    .ack-grid{ grid-template-columns: 1fr; }
+}
+
+
+.ack-title {
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    line-height: 1.15;
+    margin-bottom: 6px;
+}
+
+/* allows multi-line roles / sub-lists */
+.ack-subtitle {
+    font-size: 13px;
+    line-height: 1.35;
+    opacity: 0.95;
+    margin-bottom: 6px;
+}
+
+/* link line like the sample */
+.ack-link {
+    display: inline-block;
+    font-size: 13px;
     text-decoration: underline;
+    color: #3a2211;
+    opacity: 0.95;
 }
-.section-panel a:hover {
+
+.ack-link:hover {
     color: #221108;
 }
+
+.ack-single {
+    grid
+}
+
+/* optional tiny note */
+.ack-note {
+    margin-top: 6px;
+    font-size: 12px;
+    opacity: 0.75;
+}
+
+/* tighten on small screens */
+@media (max-width: 600px) {
+    .ack-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+}
+
 
 /* layout.css */
 #app {
@@ -351,27 +504,6 @@ a.lightbox-link {
     width: 100%;
     height: 100vh; /* takes the full viewport height */
     overflow: hidden;
-}
-
-.site-footer > div > p {
-    text-align: center;
-}
-
-.site-footer {
-    position: relative; /* ensure it flows after #app */
-    z-index: 5; /* above background if needed */
-}
-
-.site-footer .logos {
-    display: flex;
-    gap: 50px;          /* space between logo links */
-    align-items: center;
-    padding: 20px 0;    /* optional vertical padding */
-    flex-wrap: wrap;    /* let them wrap on smaller screens */
-}
-
-.site-footer .logos img {
-    filter: sepia(100%);
 }
 
 /* Ensure the container shows even if images fail to load */

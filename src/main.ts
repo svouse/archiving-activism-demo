@@ -1,98 +1,88 @@
+// /src/main.ts
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { initSearch } from './search';
 
 /* ===========================
    Types
    =========================== */
-type CloudItem = {
-    id: string | number;
-    title: string;
-    year: number | null;
-    repository: string | null;
-    mediaType: string | null;
-    description: string | null;
-    schoolPrimary: string | null;
-    schoolSecondary: string | null;
-    tags: string[];
-    link: string | null;
-    previewLocal: string;
+
+type YearRaw = number | string | null;
+
+type ArchiveRecord = {
+    id: number | string;
+    title?: string;
+    year?: YearRaw;
+    repository?: string | null;
+    location?: string | null;
+    mediaType?: 'image' | 'pdf' | string | null;
+    description?: string | null;
+    tags?: any;
+    hires?: any;
+    schoolPrimary?: string | null;
+    schoolSecondary?: string | null;
+    link?: string | null;
+    url?: string | null;
     documentDirect?: string | null;
 };
 
-type FullRecord = {
-    id: string | number;
+type RenderRecord = ArchiveRecord & {
+    id: number;
     title: string;
-    year?: number | null;
-    repository?: string | null;
-    location?: string | null;
-    mediaType?: string | null;
-    description?: string | null;
-    schoolPrimary?: string | null;
-    schoolSecondary?: string | null;
-    tags?: string[];
-    url?: string | null;
-    hires?: string[];
-    permissions?: boolean;
-    thumbSource?: string | null;
-    topics?: string[]; // present in your manifest
+    year: YearRaw;
+    yearLabel: string;
+    yearSort: number;
+    repository: string | null;
+    location: string | null;
+    mediaType: string | null;
+    description: string | null;
+    tags: string[];
+    hires: string[];
+    hiresLocalUrls: string[];
+    hiresRemoteRaw: string[];
+    previewKind: 'images' | 'pdf' | 'none';
+    previewUrls: string[];
+    iconUrl: string;
 };
 
 type Doc = {
-    id: string | number;
+    id: number;
     title: string;
-    year?: string | number | null;
-    url?: string | null;
-    // Kept for legacy, but ring color now keys off school
-    topic?: 'protest' | 'flyer' | 'surveillance' | 'policy' | 'media' | 'other';
-    tags?: string[];
-    repo?: string | null;
+    year: YearRaw;
+    repo: string | null;
+    description: string | null;
+    tags: string[];
     iconURL: string;
-    documentDirect?: string | null;
-    schoolPrimary?: string | null;
-    description?: string | null;
-    topicTitle?: string | null; // first entry of manifest.topics
+    schoolPrimary: string | null;
 };
 
 type SpriteWithMeta = THREE.Sprite & { meta?: Doc };
 
 /* ===========================
-   Config
+   Config / Paths
    =========================== */
-const SCHOOL_LANES = [
-    'Direct Activism & Advocacy',
-    'University-Based Politics',
-    'Public Education',
-    'Pedagogy & Training',
-    null, // unknown
+
+const BASE = import.meta.env.BASE_URL || '/';
+
+const BYID_CANDIDATES = [
+    BASE + 'data/resources.byId.json',
+    '/data/resources.byId.json',
+    '../data/resources.byId.json',
+    '../../data/resources.byId.json',
 ];
 
-const SCHOOL_COLOR: Record<string, number> = {
-    'Direct Activism & Advocacy': 0xef6f6c,
-    'University-Based Politics': 0x7ca982,
-    'Public Education': 0xb284be,
-    'Pedagogy & Training': 0xd2c7b1,
-    other: 0xa0a0a0,
-};
+const CLOUD_CANDIDATES = [
+    BASE + 'data/cloud.resources.json',
+    '/data/cloud.resources.json',
+    '../data/cloud.resources.json',
+    '../../data/cloud.resources.json',
+];
 
-const TOPIC_COLOR: Record<string, number> = {
-    protest: 0xef6f6c,
-    flyer: 0xc85e3a,
-    surveillance: 0x8a8a8a,
-    policy: 0xd2c7b1,
-    media: 0x426a5a,
-    other: 0xaaaaaa,
-};
-
-// --- Period highlighting helpers ---
-function numericYear(y: string | number | null | undefined): number | null {
-    if (typeof y === 'number' && Number.isFinite(y)) return y;
-    if (typeof y === 'string') {
-        const n = parseInt(y, 10);
-        return Number.isFinite(n) ? n : null;
-    }
-    return null;
-}
+const HIRES_BASE_CANDIDATES = [
+    BASE + 'hires/',
+    '/hires/',
+    '../hires/',
+    '../../hires/',
+];
 
 const PERIODS: Record<'precursors' | 'thick' | 'today', [number, number]> = {
     precursors: [1940, 1959],
@@ -102,498 +92,500 @@ const PERIODS: Record<'precursors' | 'thick' | 'today', [number, number]> = {
 
 let activePeriodKey: keyof typeof PERIODS | null = null;
 
-const BASE = import.meta.env.BASE_URL || '/';
-const HIRES_BASE = BASE + 'hires/';
+const IMAGE_EXT_RE = /\.(png|jpe?g|webp|gif|avif|tiff?|heic)$/i;
+const PDF_EXT_RE = /\.pdf$/i;
+
+const isHttpUrl = (s: string) => /^https?:\/\//i.test(String(s || ''));
+const encodePath = (p: string) => String(p || '').split('/').map(encodeURIComponent).join('/');
 
 /* ===========================
-   DOM
+   DOM refs
    =========================== */
+
 let hoverTip: HTMLDivElement | null = null;
-let card: HTMLDivElement | null = null;
-let cardHeader: HTMLDivElement | null = null;
-let cardTitle: HTMLSpanElement | null = null;
-let cardYear: HTMLSpanElement | null = null;
-let cardRepo: HTMLSpanElement | null = null;
-let cardThumb: HTMLImageElement | null = null;
-let cardLink: HTMLAnchorElement | null = null;
-let tagChips: HTMLDivElement | null = null;
 let hintEl: HTMLDivElement | null = null;
 
-// ====== Lightbox zoom/pan (clean version) ======
-let lightboxViewportEl: HTMLDivElement | null = null;
-let lightboxImgEl: HTMLImageElement | null = null;
+let infoCard: HTMLDivElement | null = null;
+let infoHeader: HTMLElement | null = null;
+let infoThumb: HTMLImageElement | null = null;
+let infoTitle: HTMLSpanElement | null = null;
+let infoRepo: HTMLSpanElement | null = null;
+let infoYear: HTMLSpanElement | null = null;
+let tagChips: HTMLDivElement | null = null;
+let infoLink: HTMLAnchorElement | null = null;
 
-let zoomScale = 1;
-let zoomTranslateX = 0;
-let zoomTranslateY = 0;
-let lightboxZoomBound = false;
+function initDomRefs() {
+    hoverTip = document.getElementById('hoverTip') as HTMLDivElement | null;
+    hintEl = document.getElementById('hint') as HTMLDivElement | null;
 
-function applyZoomTransform() {
+    infoCard = document.getElementById('infoCard') as HTMLDivElement | null;
+    infoThumb = document.getElementById('infoThumb') as HTMLImageElement | null;
+    infoTitle = document.getElementById('infoTitle') as HTMLSpanElement | null;
+    infoRepo = document.getElementById('infoRepo') as HTMLSpanElement | null;
+    infoYear = document.getElementById('infoYear') as HTMLSpanElement | null;
+    tagChips = document.getElementById('tagChips') as HTMLDivElement | null;
+    infoLink = document.getElementById('infoLink') as HTMLAnchorElement | null;
+
+    // Query after card is found
+    if (infoCard) {
+        infoHeader = infoCard.querySelector('.info-card__header') as HTMLElement | null;
+    }
+
+    // Stop propagation on card clicks
+    infoCard?.addEventListener('click', (e) => e.stopPropagation());
 }
-
-function resetZoom() {
-}
-
-function setupLightboxZoom() {
-    // zoom disabled for now – keep stub so existing calls don't break
-    if (lightboxZoomBound) return;
-    lightboxZoomBound = true;
-    lightboxViewportEl = document.querySelector('.doc-image-viewport') as HTMLDivElement | null;
-    lightboxImgEl      = document.getElementById('docImage') as HTMLImageElement | null;
-}
-
-
 
 /* ===========================
-   Three.js
+   Modal
    =========================== */
-let scene: THREE.Scene,
-    camera: THREE.PerspectiveCamera,
-    renderer: THREE.WebGLRenderer;
+
+let modalCloseBound = false;
+let modalPages: string[] = [];
+let modalPageIndex = 0;
+
+function bindModalCloseOnce() {
+    if (modalCloseBound) return;
+    modalCloseBound = true;
+
+    const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
+    const closeBtn = document.getElementById('docPreviewClose') as HTMLButtonElement | null;
+    const prevBtn = document.getElementById('docPrevBtn') as HTMLButtonElement | null;
+    const nextBtn = document.getElementById('docNextBtn') as HTMLButtonElement | null;
+    const frame = document.getElementById('docFrame') as HTMLIFrameElement | null;
+    const img = document.getElementById('docImage') as HTMLImageElement | null;
+
+    if (!docPreview) {
+        console.error('[modal] #docPreview not found');
+        return;
+    }
+
+    const close = () => {
+        if (frame) frame.src = 'about:blank';
+        if (img) img.src = '';
+        modalPages = [];
+        modalPageIndex = 0;
+        docPreview.style.display = 'none';
+        docPreview.setAttribute('aria-hidden', 'true');
+    };
+
+    closeBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        close();
+    });
+
+    // Navigation buttons
+    prevBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        modalPrevPage();
+    });
+
+    nextBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        modalNextPage();
+    });
+
+    docPreview.addEventListener('click', (e) => {
+        if (e.target === docPreview) close();
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if (docPreview.getAttribute('aria-hidden') !== 'true') {
+            if (e.key === 'Escape') {
+                close();
+                return;
+            }
+
+            // Arrow key navigation for multi-page images
+            if (modalPages.length > 1) {
+                if (e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    modalNextPage();
+                } else if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    modalPrevPage();
+                }
+            }
+        }
+    });
+}
+
+function hideHint() {
+    hintEl?.classList.add('hint--hide');
+}
+
+/* ===========================
+   Three.js core
+   =========================== */
+
+let scene: THREE.Scene;
+let camera: THREE.PerspectiveCamera;
+let renderer: THREE.WebGLRenderer;
 let controls: OrbitControls;
+
 const group = new THREE.Group();
 const loader = new THREE.TextureLoader();
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
 
-let selectionRing: THREE.Mesh | null = null;
-let selectedObj: THREE.Sprite | null = null;
+const raycaster = new THREE.Raycaster();
+raycaster.params.Sprite = raycaster.params.Sprite || {};
+raycaster.params.Sprite.threshold = 32;
+
+const mouse = new THREE.Vector2();
 const sprites: SpriteWithMeta[] = [];
 
 let autoRotate = true;
 let lastInteraction = Date.now();
 
-const _worldPos = new THREE.Vector3();
-const _worldScale = new THREE.Vector3();
-const _camDir = new THREE.Vector3();
-
 /* ===========================
    Data state
    =========================== */
+
+let BY_ID: Record<string, ArchiveRecord> = {};
+let RENDER_BY_ID: Record<string, RenderRecord> = {};
 let DOCS: Doc[] = [];
-let CLOUD: CloudItem[] = [];
-let BY_ID: Record<string, FullRecord> = {};
+let HIRES_BASE = BASE + 'hires/';
+
+let searchQuery = '';
 
 /* ===========================
-   Boot
+   Helpers
    =========================== */
-init();
 
-async function init() {
-    setupThree();
-
-    await loadArchiveData();
-    DOCS = buildDocsFromData(CLOUD, BY_ID);
-
-    const positions = positionsRingTime(DOCS, {
-        R: 300,
-        zRange: 280,
-        angleJitter: 0.26,
-        timeAngle: 0.2,
-        timeRadial: 36,
-        liftY: 0, // visual center handled by full-viewport canvas
-    });
-
-    buildSprites(positions, DOCS);
-
-    // Search UI wiring
-    const searchToggle = document.getElementById('searchToggle') as HTMLButtonElement | null;
-    const searchPanel  = document.getElementById('searchPanel')  as HTMLDivElement | null;
-    const searchInput  = document.getElementById('searchInput')  as HTMLInputElement | null;
-    const searchClear  = document.getElementById('searchClear')  as HTMLButtonElement | null;
-
-    searchToggle?.addEventListener('click', () => {
-        if (!searchPanel) return;
-        const hidden = searchPanel.hasAttribute('hidden');
-        if (hidden) searchPanel.removeAttribute('hidden'); else searchPanel.setAttribute('hidden', '');
-        if (!hidden) return;
-        setTimeout(() => searchInput?.focus(), 0);
-    });
-
-    searchInput?.addEventListener('input', () => {
-        searchQuery = searchInput.value || "";
-        updateVisibility();
-    });
-
-    searchClear?.addEventListener('click', () => {
-        if (searchInput) searchInput.value = "";
-        searchQuery = "";
-        updateVisibility();
-    });
-
-// ENTER to apply (already applies on input), ESC to close the panel
-    searchInput?.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            searchPanel?.setAttribute('hidden', '');
-            (document.activeElement as HTMLElement)?.blur();
-        }
-    });
-
-    // Period chips: #precursors, #thick, #today live in .timeline-cards
-    const periodEls = Array.from(
-        document.querySelectorAll<HTMLAnchorElement>('.timeline-cards .chip')
-    );
-    periodEls.forEach((el) => {
-        el.addEventListener('click', (ev) => {
-            ev.preventDefault(); // don't jump the page
-            const key = (el.getAttribute('href') || '').replace(/^#/, '') as keyof typeof PERIODS;
-            if (!PERIODS[key]) return;
-
-            // toggle behavior: click the same chip again to clear
-            if (activePeriodKey === key) {
-                clearHighlight();
-            } else {
-                applyHighlightForPeriod(key);
-            }
-        });
-    });
-
-    // Also support hash changes
-    window.addEventListener('hashchange', () => {
-        const key = (location.hash || '').replace(/^#/, '') as keyof typeof PERIODS;
-        if (PERIODS[key]) applyHighlightForPeriod(key);
-        else clearHighlight();
-    });
-
-    // Single ESC handler: close card else clear highlight
-    window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            const isCardVisible = card && card.style.display !== 'none';
-            if (isCardVisible) {
-                card.style.display = 'none';
-            } else {
-                clearHighlight();
-                updatePeriodCardUI(null);
-            }
-        }
-    });
-
-    animate();
+function numericYear(y: YearRaw): number | null {
+    if (typeof y === 'number' && Number.isFinite(y)) return y;
+    if (typeof y === 'string') {
+        const n = parseInt(y, 10);
+        return Number.isFinite(n) ? n : null;
+    }
+    return null;
 }
 
-/* ===========================
-   Data loading + mapping
-   =========================== */
-async function loadArchiveData() {
-    const base = import.meta.env.BASE_URL || '/'; // Vite sets this to '/'
-
-    const getJSON = async (path: string) => {
-        const res = await fetch(base + path);
-        if (!res.ok) throw new Error(`Failed to load ${path}: ${res.status}`);
-        return res.json();
-    };
-
-    const [cloud, byId] = await Promise.all([
-        getJSON('data/cloud.resources.json'),
-        getJSON('data/resources.byId.json'),
-    ]);
-
-    CLOUD = cloud as CloudItem[];
-    BY_ID = byId as Record<string, FullRecord>;
+function yearToLabel(y: YearRaw): string {
+    if (typeof y === 'number') return String(y);
+    if (typeof y === 'string' && y.trim()) return y.trim();
+    return '—';
 }
 
+function yearToSort(y: YearRaw): number {
+    if (typeof y === 'number') return y;
+    if (typeof y === 'string') {
+        const m = y.match(/\b(18|19|20)\d{2}\b/);
+        if (m) return Number(m[0]);
+    }
+    return Number.POSITIVE_INFINITY;
+}
 
-// Base search state
-let searchQuery = "";
+function normalizeByIdShape(raw: any): Record<string, ArchiveRecord> {
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw as Record<string, ArchiveRecord>;
+    if (Array.isArray(raw)) {
+        const out: Record<string, ArchiveRecord> = {};
+        for (const r of raw) {
+            if (!r) continue;
+            const id = String((r as any).id);
+            if (!id || id === 'undefined') continue;
+            out[id] = r as ArchiveRecord;
+        }
+        return out;
+    }
+    return {};
+}
 
-// Remove first 3 underscore-delimited parts and extension; tidy spaces
+async function fetchJsonFirst<T>(candidates: string[], label: string): Promise<{ url: string; data: T }> {
+    const errs: string[] = [];
+    for (const url of candidates) {
+        try {
+            const res = await fetch(url, { cache: 'no-store' });
+            if (!res.ok) {
+                errs.push(`${url} -> ${res.status}`);
+                continue;
+            }
+            const data = (await res.json()) as T;
+            console.log(`[data] loaded ${label} from`, url);
+            return { url, data };
+        } catch (e: any) {
+            errs.push(`${url} -> ${String(e?.message || e)}`);
+        }
+    }
+    throw new Error(`[data] failed to load ${label}. Tried:\n- ${errs.join('\n- ')}`);
+}
+
+async function pickFirstExistingBase(candidates: string[], testFile: string): Promise<string> {
+    for (const base of candidates) {
+        const url = base + encodePath(testFile);
+        try {
+            const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+            if (res.ok) return base;
+        } catch {
+            // ignore
+        }
+    }
+    return candidates[0] || (BASE + 'hires/');
+}
+
 function cleanFileDisplay(name: string): string {
-    const base = name.split('/').pop() || name;
+    const base = String(name || '').split('/').pop() || String(name || '');
     const noExt = base.replace(/\.[a-z0-9]+$/i, '');
     const parts = noExt.split('_');
     const kept = parts.slice(3).join(' ').replace(/[-]+/g, ' ');
     return kept.replace(/\s+/g, ' ').trim();
 }
 
-// Decide what to show as title in UI (does not mutate the manifest)
-function displayTitleFor(meta: Doc): string {
-    const rec = BY_ID[String(meta.id)];
-    // If meta.title looks like a filename pattern (contains underscores and an extension inside), clean it.
+function displayTitleFor(doc: Doc): string {
+    const rec = BY_ID[String(doc.id)];
     if (rec?.title && /_/.test(rec.title)) return cleanFileDisplay(rec.title);
-    if (meta.title && /_/.test(meta.title)) return cleanFileDisplay(meta.title);
-    // Else try cleaning from URL/hires filename if title is missing
-    const fromUrl = rec?.hires?.[0] || meta.url || "";
-    if (fromUrl) {
-        const base = fromUrl.split('/').pop() || "";
+    if (doc.title && /_/.test(doc.title)) return cleanFileDisplay(doc.title);
+    const fromHires = Array.isArray(rec?.hires) ? String(rec!.hires![0] || '') : '';
+    if (fromHires) {
+        const base = fromHires.split('/').pop() || '';
         if (/_/.test(base)) return cleanFileDisplay(base);
     }
-    return meta.title || rec?.title || "Untitled";
+
+    // Final cleanup: remove any remaining underscores and replace with spaces
+    const title = doc.title || rec?.title || 'Untitled';
+    return title.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function isLikelyLocalFilename(raw: string): boolean {
-    // Strip query/hash, keep last segment
-    const noQuery = raw.split(/[?#]/)[0];
-    const base = (noQuery.split('/').pop() || '').trim();
-
-    // Needs a real extension
-    if (!/\.(jpe?g|png|webp|tiff?|heic|pdf)$/i.test(base)) return false;
-
-    // Don’t treat bare numbers as filenames (Box IDs)
-    if (/^\d+$/.test(base)) return false;
-
-    return true;
-}
-
-function isImageUrl(url: string | null | undefined): boolean {
-    if (!url) return false;
-    const clean = url.split(/[?#]/)[0].toLowerCase();
-    return /\.(jpe?g|png|webp|gif|tiff?|heic)$/.test(clean);
-}
-
-
-function hiresCandidates(meta: Doc): string[] {
-    const rec = BY_ID[String(meta.id)];
-    const candidates: string[] = [];
-
-    // 1) Explicit hires that already look like filenames (not Box IDs)
-    if (Array.isArray(rec?.hires)) {
-        for (const h of rec!.hires!) {
-            if (!isLikelyLocalFilename(String(h))) continue;
-
-            let base = String(h).split(/[?#]/)[0].split('/').pop() || '';
-            base = decodeURIComponent(base);
-            base = base.replace(/^hires[\/\\]/i, '').trim();
-            if (base) candidates.push(base);
-        }
+function normalizeFilename(raw: string): string {
+    let s = String(raw ?? '').trim();
+    while ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+        s = s.slice(1, -1).trim();
     }
-
-    // 2) Build guesses from the title (this is where your local naming mostly lines up)
-    const rawTitle = (rec?.title || meta.title || '').trim();
-    if (rawTitle) {
-        // Normalize spaces, but keep punctuation (quotes, etc.)
-        const normalized = rawTitle.replace(/\s+/g, ' ').trim();
-        // A "cleaned" variant with Windows-illegal chars removed, just in case
-        const cleaned = normalized.replace(/[<>:"/\\|?*]+/g, '').trim();
-
-        const bases = new Set<string>();
-        if (normalized) bases.add(normalized);
-        if (cleaned && cleaned !== normalized) bases.add(cleaned);
-
-        // Common patterns in your folder:
-        //   title + ".jpg/.jpeg/.png"
-        //   title + " .jpg" (for HEIC → JPEG conversions)
-        const exts = ['.jpg', '.jpeg', '.png', ' .jpg', ' .jpeg', ' .png'];
-        // Also try suffix variants like "_A", "_B", "_C"
-        const suffixes = ['', '_A', '_B', '_C'];
-
-        for (const base of bases) {
-            for (const suffix of suffixes) {
-                for (const ext of exts) {
-                    candidates.push(base + suffix + ext);
-                }
-            }
-        }
-    }
-
-    // Deduplicate (case-insensitive) while preserving order
-    const seen = new Set<string>();
-    return candidates.filter((name) => {
-        const key = name.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-    });
+    s = s.replace(/\s+\.(png|jpe?g|webp|gif|avif|tiff?|heic|pdf)\b/gi, '.$1');
+    s = s.replace(/\s{2,}/g, ' ');
+    s = s.replace(/^hires[\/\\]/i, '').replace(/^\/+/, '');
+    return s;
 }
 
-
-async function hiresLocalFor(meta: Doc): Promise<string | null> {
-    const relNames = hiresCandidates(meta);
-    if (!relNames.length) return null;
-
-    for (const rel of relNames) {
-        const encodedRel = rel
-            .split('/')
-            .map((part) => encodeURIComponent(part))
-            .join('/');
-
-        const url = HIRES_BASE + encodedRel;
-
-        try {
-            const res = await fetch(url, { method: 'HEAD' });
-            if (res.ok) {
-                return url; // first existing hires file wins
-            }
-        } catch {
-            // ignore network errors and try the next candidate
-        }
-    }
-
-    // None of the candidates exist – fall back to thumb in the click handler
-    return null;
+function hiresFilenameToUrl(filename: string): string {
+    const clean = normalizeFilename(filename);
+    return HIRES_BASE + encodePath(clean);
 }
 
+function isImageUrl(url: string): boolean {
+    const clean = String(url || '').split(/[?#]/)[0];
+    return IMAGE_EXT_RE.test(clean);
+}
 
+function isPdfUrl(url: string): boolean {
+    const clean = String(url || '').split(/[?#]/)[0];
+    return PDF_EXT_RE.test(clean);
+}
 
-
-// Tokenize, support tag:foo filters (AND across tokens)
-function matchesQuery(meta: Doc, q: string): boolean {
+function matchesQuery(doc: Doc, q: string): boolean {
     if (!q.trim()) return true;
-    const rec = BY_ID[String(meta.id)];
+
+    const rec = BY_ID[String(doc.id)];
     const hay = [
-        displayTitleFor(meta).toLowerCase(),
-        (meta.description || "").toLowerCase(),
-        ...(meta.tags || []).map(t => String(t).toLowerCase()),
-        ...(rec?.tags || []).map(t => String(t).toLowerCase()),
+        displayTitleFor(doc).toLowerCase(),
+        (doc.description || '').toLowerCase(),
+        (doc.repo || '').toLowerCase(),
+        String(doc.year ?? '').toLowerCase(),
+        ...(doc.tags || []).map((t) => String(t).toLowerCase()),
+        ...(Array.isArray(rec?.tags) ? (rec!.tags as any[]).map((t) => String(t).toLowerCase()) : []),
     ];
 
-    // parse tokens
     const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
-    let ok = true;
     for (const t of tokens) {
         const tagMatch = t.match(/^tag:(.+)$/);
         if (tagMatch) {
             const want = tagMatch[1];
-            const tagPool = new Set([...(meta.tags || []), ...(rec?.tags || [])].map(x => String(x).toLowerCase()));
-            if (!tagPool.has(want)) { ok = false; break; }
+            const pool = new Set(
+                [...(doc.tags || []), ...(Array.isArray(rec?.tags) ? (rec!.tags as any[]) : [])].map((x) =>
+                    String(x).toLowerCase()
+                )
+            );
+            if (!pool.has(want)) return false;
         } else {
-            // plain term must appear in any hay entry
-            if (!hay.some(h => h.includes(t))) { ok = false; break; }
+            if (!hay.some((h) => h.includes(t))) return false;
         }
     }
-    return ok;
+    return true;
 }
 
-// Combined filter (period chip + search). Controls sprite visibility styling.
+/* ===========================
+   Build render records + docs
+   =========================== */
+
+function buildRenderRecords(byId: Record<string, ArchiveRecord>): RenderRecord[] {
+    const out: RenderRecord[] = [];
+
+    for (const r0 of Object.values(byId)) {
+        if (!r0) continue;
+
+        const idNum = Number((r0 as any).id);
+        if (!Number.isFinite(idNum)) continue;
+
+        const title = String((r0 as any).title || 'Untitled');
+        const year = ((r0 as any).year ?? null) as YearRaw;
+
+        const hiresArr = Array.isArray((r0 as any).hires) ? ((r0 as any).hires as any[]) : [];
+        const hires: string[] = hiresArr.map((h) => String(h ?? '').trim()).filter(Boolean);
+
+        const hiresRemoteRaw: string[] = [];
+        const hiresLocalUrls: string[] = [];
+
+        for (const h of hires) {
+            if (isHttpUrl(h)) {
+                hiresRemoteRaw.push(h);
+                continue;
+            }
+            hiresLocalUrls.push(hiresFilenameToUrl(h));
+        }
+
+        const localPdfUrls = hiresLocalUrls.filter((u) => isPdfUrl(u));
+        const localImageUrls = hiresLocalUrls.filter((u) => isImageUrl(u));
+
+        let previewKind: RenderRecord['previewKind'] = 'none';
+        let previewUrls: string[] = [];
+
+        if (localPdfUrls.length) {
+            previewKind = 'pdf';
+            previewUrls = localPdfUrls.slice(0, 1);
+        } else if (localImageUrls.length) {
+            previewKind = 'images';
+            previewUrls = localImageUrls;
+        }
+
+        const iconUrl = localImageUrls[0] || '';
+
+        out.push({
+            ...r0,
+            id: idNum,
+            title,
+            year,
+            yearLabel: yearToLabel(year),
+            yearSort: yearToSort(year),
+            repository: (r0 as any).repository ?? null,
+            location: (r0 as any).location ?? null,
+            mediaType: (r0 as any).mediaType ?? null,
+            description: (r0 as any).description ?? null,
+            tags: Array.isArray((r0 as any).tags) ? ((r0 as any).tags as any[]).map(String) : [],
+            hires,
+            hiresLocalUrls,
+            hiresRemoteRaw,
+            previewKind,
+            previewUrls,
+            iconUrl,
+        });
+    }
+
+    out.sort((a, b) => a.id - b.id);
+    return out;
+}
+
+function buildDocsFromRender(renderList: RenderRecord[]): Doc[] {
+    return renderList.map((r) => ({
+        id: r.id,
+        title: r.title || 'Untitled',
+        year: r.year ?? null,
+        repo: r.repository ?? null,
+        description: r.description ?? null,
+        tags: r.tags ?? [],
+        iconURL: r.iconUrl || '',
+        schoolPrimary: (r as any).schoolPrimary ?? null,
+    }));
+}
+
+/* ===========================
+   Data loading
+   =========================== */
+
+async function loadArchiveData() {
+    const byIdResp = await fetchJsonFirst<any>(BYID_CANDIDATES, 'resources.byId.json');
+    BY_ID = normalizeByIdShape(byIdResp.data);
+
+    const renderList = buildRenderRecords(BY_ID);
+    RENDER_BY_ID = Object.fromEntries(renderList.map((r) => [String(r.id), r]));
+    DOCS = buildDocsFromRender(renderList);
+
+    const anyLocal = renderList
+        .flatMap((r) => r.hires || [])
+        .map((h) => String(h || '').trim())
+        .find((h) => h && !isHttpUrl(h));
+    if (anyLocal) {
+        HIRES_BASE = await pickFirstExistingBase(HIRES_BASE_CANDIDATES, normalizeFilename(anyLocal));
+    } else {
+        HIRES_BASE = HIRES_BASE_CANDIDATES[0] || (BASE + 'hires/');
+    }
+
+    const renderList2 = buildRenderRecords(BY_ID);
+    RENDER_BY_ID = Object.fromEntries(renderList2.map((r) => [String(r.id), r]));
+    DOCS = buildDocsFromRender(renderList2);
+
+    console.log('[data] BY_ID keys =', Object.keys(BY_ID).length, 'DOCS =', DOCS.length, 'HIRES_BASE =', HIRES_BASE);
+    console.log('[data] First 3 DOCS:', DOCS.slice(0, 3).map(d => ({ id: d.id, title: d.title, iconURL: d.iconURL })));
+}
+
+/* ===========================
+   Sprite visibility
+   =========================== */
+
+function setSpriteState(spr: SpriteWithMeta, active: boolean) {
+    const mat = spr.material as THREE.SpriteMaterial;
+
+    if (!(spr as any).baseScale) (spr as any).baseScale = spr.scale.clone();
+    const base = (spr as any).baseScale as THREE.Vector3;
+
+    mat.transparent = true;
+
+    if (active) {
+        mat.opacity = 1.0;
+        spr.scale.set(base.x * 1.15, base.y * 1.15, base.z);
+        mat.color.setHex(0xfff2e0);
+
+        // CRITICAL FIX: Make sprite clickable
+        spr.raycast = THREE.Sprite.prototype.raycast;
+    } else {
+        mat.opacity = 0.22;
+        spr.scale.copy(base);
+        mat.color.setHex(0xb0b0b0);
+
+        spr.raycast = () => {}; // Empty function = ignore this sprite
+    }
+}
+
+function updatePeriodChipUI(key: keyof typeof PERIODS | null) {
+    const chips = Array.from(document.querySelectorAll<HTMLAnchorElement>('.timeline-cards .chip'));
+    chips.forEach((chip) => {
+        const k = (chip.getAttribute('href') || '').replace(/^#/, '');
+        if (key && k === key) chip.classList.add('is-active');
+        else chip.classList.remove('is-active');
+    });
+}
+
 function updateVisibility() {
     const [minY, maxY] = activePeriodKey ? PERIODS[activePeriodKey] : [Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY];
+
     sprites.forEach((spr) => {
-        const meta = (spr as any).meta as Doc;
-        const y = numericYear(meta?.year as any);
+        const d = (spr as any).meta as Doc | undefined;
+        if (!d) return;
+
+        const y = numericYear(d.year);
         const inPeriod = !activePeriodKey || (y !== null && y >= minY && y <= maxY);
-        const searchOk = matchesQuery(meta, searchQuery);
+        const searchOk = matchesQuery(d, searchQuery);
+
         setSpriteState(spr, inPeriod && searchOk);
     });
 }
 
-function buildDocsFromData(
-    cloud: CloudItem[],
-    byId: Record<string, FullRecord>
-): Doc[] {
-    return cloud.map((it) => {
-        const rec = byId[String(it.id)];
-        const url = it.documentDirect || rec?.url || it.link || null;
+function clearHighlight() {
+    activePeriodKey = null;
+    updateVisibility();
+    updatePeriodChipUI(null);
+}
 
-        // topic label from manifest.topics[0]
-        const topicTitle =
-            Array.isArray(rec?.topics) && rec!.topics!.length ? String(rec!.topics![0]) : null;
-
-        // rough topic bucket (optional tinting)
-        const mt = (it.mediaType || rec?.mediaType || '').toLowerCase();
-        let topic: Doc['topic'] = 'other';
-        if (mt.includes('protest')) topic = 'protest';
-        else if (mt.includes('flyer')) topic = 'flyer';
-        else if (mt.includes('surveillance')) topic = 'surveillance';
-        else if (mt.includes('policy')) topic = 'policy';
-        else if (mt.includes('media') || mt.includes('newspaper') || mt.includes('press')) topic = 'media';
-
-        return {
-            id: it.id,
-            title: it.title || rec?.title || 'Untitled',
-            year: it.year ?? rec?.year ?? null,
-            url,
-            topic,
-            tags: (rec?.tags && rec.tags.length ? rec.tags : it.tags) || [],
-            repo: rec?.repository ?? it.repository ?? null,
-            iconURL: it.previewLocal,
-            schoolPrimary: rec?.schoolPrimary ?? it.schoolPrimary ?? null,
-            description: rec?.description ?? it.description ?? null,
-            topicTitle,
-        };
-    });
+function applyHighlightForPeriod(key: keyof typeof PERIODS) {
+    activePeriodKey = key;
+    updateVisibility();
+    updatePeriodChipUI(key);
 }
 
 /* ===========================
-   Scene
+   Layout
    =========================== */
-function setupThree() {
-    scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 6000);
-    camera.position.z = 900;
 
-    renderer = new THREE.WebGLRenderer({
-        antialias: true,
-        alpha: true,
-        powerPreference: 'high-performance',
-    });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    // @ts-ignore
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-
-    // Mount canvas inside #app, behind UI
-    const appEl = document.getElementById('app') as HTMLElement;
-    appEl.style.position = 'relative';
-    renderer.domElement.style.position = 'absolute';
-    renderer.domElement.style.inset = '0';
-    renderer.domElement.style.zIndex = '0';
-    appEl.prepend(renderer.domElement);
-
-    // Keep clicks on the card from bubbling to canvas
-    card.addEventListener('click', (e) => e.stopPropagation());
-
-
-    const c = renderer.domElement;
-    c.style.position = 'fixed';
-    c.style.inset = '0';
-    c.style.width = '100vw';
-    c.style.height = '100vh';
-    c.style.zIndex = '0';
-    c.style.pointerEvents = 'auto'; // allow orbit/picking
-
-    if (hoverTip) hoverTip.style.zIndex = '20';
-    if (hintEl) hintEl.style.zIndex = '20';
-
-    controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.addEventListener('start', () => hideHint());
-    controls.addEventListener('change', () => {
-        lastInteraction = Date.now();
-        autoRotate = false;
-    });
-
-    scene.fog = new THREE.FogExp2(0x000000, 0.0009);
-
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    window.addEventListener('mousemove', (e) => {
-        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-        raycaster.setFromCamera(mouse, camera);
-        const hits = raycaster.intersectObjects(group.children);
-        if (hits.length) {
-            const spr = hits[0].object as THREE.Sprite;
-            const meta: Doc = (spr as any).meta || {};
-            hoverTip.style.display = 'block';
-            hoverTip.style.left = `${e.clientX + 12}px`;
-            hoverTip.style.top = `${e.clientY + 12}px`;
-            hoverTip.textContent = meta.title || '—';
-        } else {
-            hoverTip.style.display = 'none';
-        }
-    });
-
-    // Click in empty space clears; clicking a sprite selects
-    window.addEventListener('click', () => {
-        raycaster.setFromCamera(mouse, camera);
-        const hits = raycaster.intersectObjects(group.children);
-        if (!hits.length) {
-            clearSelection();
-            return;
-        }
-        selectSprite(hits[0].object as THREE.Sprite);
-    });
-
-    setTimeout(() => hideHint(), 3500);
-}
-
-/* ===========================
-   Layout helpers
-   =========================== */
-// OG ring with subtle time influence (angle + radius), organic but clean
 function positionsRingTime(
     docs: Doc[],
     opts?: {
@@ -605,12 +597,12 @@ function positionsRingTime(
         liftY?: number;
     }
 ): THREE.Vector3[] {
-    const { R = 300, zRange = 140, angleJitter = 0.18, timeAngle = 0.22, timeRadial = 40, liftY = 0 } =
-    opts || {};
+    const { R = 300, zRange = 140, angleJitter = 0.18, timeAngle = 0.22, timeRadial = 40, liftY = 0 } = opts || {};
 
     const ys = docs
         .map((d) => (typeof d.year === 'number' ? d.year : parseInt(String(d.year ?? ''), 10)))
         .filter((n) => Number.isFinite(n)) as number[];
+
     const yMin = Math.min(...(ys.length ? ys : [1960]));
     const yMax = Math.max(...(ys.length ? ys : [1999]));
     const span = Math.max(1, yMax - yMin);
@@ -644,10 +636,27 @@ function positionsRingTime(
 /* ===========================
    Sprites
    =========================== */
+
 function buildSprites(positions: THREE.Vector3[], docs: Doc[]) {
     const maxAniso = renderer.capabilities.getMaxAnisotropy();
 
     docs.forEach((doc, i) => {
+        const pos = positions[i] || new THREE.Vector3();
+
+        const makeSprite = (mat: THREE.SpriteMaterial) => {
+            const sprite = new THREE.Sprite(mat) as SpriteWithMeta;
+            sprite.scale.set(60 + Math.random() * 28, (60 + Math.random() * 28) * (0.85 + Math.random() * 0.25), 1);
+            sprite.position.copy(pos);
+            (sprite as any).meta = doc;
+            sprites.push(sprite);
+            group.add(sprite);
+        };
+
+        if (!doc.iconURL) {
+            makeSprite(new THREE.SpriteMaterial({ color: 0x666666, transparent: true, opacity: 0.9 }));
+            return;
+        }
+
         loader.load(
             doc.iconURL,
             (texture) => {
@@ -658,75 +667,56 @@ function buildSprites(positions: THREE.Vector3[], docs: Doc[]) {
                 texture.minFilter = THREE.LinearMipmapLinearFilter;
                 texture.magFilter = THREE.LinearFilter;
 
-                const mat = new THREE.SpriteMaterial({
-                    map: texture,
-                    color: 0xf5e7d6,
-                    transparent: true,
-                    opacity: 1.0,
-                });
-
-                const sprite = new THREE.Sprite(mat) as SpriteWithMeta;
-
-                sprite.scale.set(60 + Math.random() * 28, (60 + Math.random() * 28) * (0.85 + Math.random() * 0.25), 1);
-                sprite.position.copy(positions[i] || new THREE.Vector3());
-                (sprite as any).meta = doc;
-                (sprite as any).userData = { id: doc.id };
-
-                sprites.push(sprite);
-                group.add(sprite);
+                makeSprite(
+                    new THREE.SpriteMaterial({
+                        map: texture,
+                        color: 0xf5e7d6,
+                        transparent: true,
+                        opacity: 1.0,
+                    })
+                );
             },
             undefined,
-            (err) => console.error('Failed to load icon', doc.iconURL, err)
+            (err) => {
+                console.error('Failed to load icon', doc.iconURL, err);
+                makeSprite(new THREE.SpriteMaterial({ color: 0x666666, transparent: true, opacity: 0.9 }));
+            }
         );
     });
 
     scene.add(group);
     group.position.y -= 150;
+
+    console.log('[sprites]', sprites.length);
 }
 
 /* ===========================
-   Selection / Card
+   Modal open
    =========================== */
-function setSpriteState(spr: SpriteWithMeta, active: boolean) {
-    const mat = spr.material as THREE.SpriteMaterial;
-    // store base scale once
-    if (!(spr as any).baseScale) {
-        (spr as any).baseScale = spr.scale.clone();
-    }
-    mat.transparent = true;
 
-    if (active) {
-        mat.opacity = 1.0;
-        const s = (spr as any).baseScale as THREE.Vector3;
-        spr.scale.set(s.x * 1.15, s.y * 1.15, s.z);
-        mat.color.setHex(0xfff2e0);
-    } else {
-        mat.opacity = 0.22;
-        const s = (spr as any).baseScale as THREE.Vector3;
-        spr.scale.copy(s);
-        mat.color.setHex(0xb0b0b0);
-    }
-}
+// REPLACE the openDocumentForMeta function in main.ts with this version:
 
 async function openDocumentForMeta(meta: Doc) {
     bindModalCloseOnce();
+
     const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
-    const frame      = document.getElementById('docFrame')   as HTMLIFrameElement | null;
-    const img        = document.getElementById('docImage')   as HTMLImageElement | null;
-    const loaderEl   = document.getElementById('docLoader')  as HTMLDivElement | null;
-    const imgViewport= document.querySelector('.doc-image-viewport') as HTMLDivElement | null;
+    const frame = document.getElementById('docFrame') as HTMLIFrameElement | null;
+    const img = document.getElementById('docImage') as HTMLImageElement | null;
+    const loaderEl = document.getElementById('docLoader') as HTMLDivElement | null;
+    const imgViewport = document.querySelector('.doc-image-viewport') as HTMLDivElement | null;
 
-    const thumbUrl = meta.iconURL || null;
-    if (!docPreview || (!frame && !img) || !thumbUrl) return;
+    if (!docPreview) {
+        console.error('[modal] #docPreview not found');
+        return;
+    }
+    if (!frame && !img) {
+        console.error('[modal] Neither #docFrame nor #docImage found');
+        return;
+    }
 
-    // make sure zoom/pan handlers are bound
-    setupLightboxZoom();
-
-    // open modal + reset state
     docPreview.style.display = 'flex';
-    // lockScroll(); // keep if you have this helper, otherwise remove
-
-    if (loaderEl) loaderEl.classList.remove('is-hidden');
+    docPreview.setAttribute('aria-hidden', 'false');
+    loaderEl?.classList.remove('is-hidden');
 
     if (imgViewport) imgViewport.style.display = 'none';
     if (img) {
@@ -739,37 +729,57 @@ async function openDocumentForMeta(meta: Doc) {
         frame.src = 'about:blank';
     }
 
-    resetZoom();  // base zoom each time
+    const rr = RENDER_BY_ID[String(meta.id)];
+    const imagePages = rr?.previewKind === 'images' ? rr.previewUrls : [];
+    const pdfUrl = rr?.previewKind === 'pdf' ? rr.previewUrls[0] : null;
 
-    // --- hi-res candidate (image or pdf) ---
-    const hiresUrl   = await hiresLocalFor(meta);
-    const primaryUrl = hiresUrl || thumbUrl;
-    const isImage    = isImageUrl(primaryUrl);
+    // CRITICAL FIX: Check if search.ts provided preview URLs FIRST
+    const previewUrlsFromSearch = (window as any).__AA_previewUrls;
+    if (previewUrlsFromSearch && Array.isArray(previewUrlsFromSearch)) {
+        modalPages = previewUrlsFromSearch;
+        modalPageIndex = 0;
+        (window as any).__AA_previewUrls = null; // Clear it
+        console.log('[modal] Using preview URLs from search:', modalPages);
+    } else if (imagePages.length) {
+        // Only set modalPages if search.ts didn't provide them
+        modalPages = imagePages;
+        modalPageIndex = 0;
+        console.log('[modal] Using preview URLs from archives:', modalPages);
+    } else {
+        modalPages = [];
+        modalPageIndex = 0;
+    }
+
+    // Show/hide navigation buttons
+    updateModalNavButtons();
 
     const showImage = (url: string) => {
         if (!img || !imgViewport) return;
-
-        imgViewport.style.display = 'block';
-        img.style.display = 'block';
-        img.src = url;
 
         if (frame) {
             frame.style.display = 'none';
             frame.src = 'about:blank';
         }
 
-        if (loaderEl) loaderEl.classList.add('is-hidden');
+        imgViewport.style.display = 'block';
+        img.style.display = 'block';
 
-        requestAnimationFrame(() => {
-            img.classList.add('is-loaded');
-        });
+        const pre = new Image();
+        pre.onload = () => {
+            img.src = url;
+            loaderEl?.classList.add('is-hidden');
+            requestAnimationFrame(() => img.classList.add('is-loaded'));
+            updateModalNavButtons();
+        };
+        pre.onerror = () => {
+            console.error('[modal] Failed to load image', url);
+            loaderEl?.classList.add('is-hidden');
+        };
+        pre.src = url;
     };
 
     const showFrame = (url: string) => {
         if (!frame) return;
-
-        frame.style.display = 'block';
-        frame.src = url;
 
         if (imgViewport) imgViewport.style.display = 'none';
         if (img) {
@@ -778,192 +788,455 @@ async function openDocumentForMeta(meta: Doc) {
             img.classList.remove('is-loaded');
         }
 
-        if (loaderEl) loaderEl.classList.add('is-hidden');
+        frame.style.display = 'block';
+        frame.src = url;
+
+        loaderEl?.classList.add('is-hidden');
+        modalPages = [];
+        modalPageIndex = 0;
+        updateModalNavButtons();
     };
 
-    if (isImage && img) {
-        const preloader = new Image();
-        preloader.onload = () => showImage(primaryUrl);
-        preloader.onerror = () => {
-            if (thumbUrl && thumbUrl !== primaryUrl && isImageUrl(thumbUrl)) {
-                const fallback = new Image();
-                fallback.onload = () => showImage(thumbUrl);
-                fallback.onerror = () => {
-                    if (loaderEl) loaderEl.classList.add('is-hidden');
-                };
-                fallback.src = thumbUrl;
-            } else {
-                if (loaderEl) loaderEl.classList.add('is-hidden');
-            }
-        };
-        preloader.src = primaryUrl;
+    // Show the first page
+    if (modalPages.length) {
+        showImage(modalPages[0]);
+        return;
+    }
+
+    if (pdfUrl) {
+        showFrame(pdfUrl);
+        return;
+    }
+
+    // Fallback: show thumbnail if available
+    if (meta.iconURL && isImageUrl(meta.iconURL)) {
+        showImage(meta.iconURL);
+        return;
+    }
+
+    loaderEl?.classList.add('is-hidden');
+}
+
+function updateModalNavButtons() {
+    const prevBtn = document.getElementById('docPrevBtn');
+    const nextBtn = document.getElementById('docNextBtn');
+    const pageIndicator = document.getElementById('docPageIndicator');
+
+    if (!prevBtn || !nextBtn) return;
+
+    if (modalPages.length > 1) {
+        prevBtn.style.display = 'block';
+        nextBtn.style.display = 'block';
+
+        prevBtn.disabled = modalPageIndex === 0;
+        nextBtn.disabled = modalPageIndex === modalPages.length - 1;
+
+        if (pageIndicator) {
+            pageIndicator.style.display = 'block';
+            pageIndicator.textContent = `${modalPageIndex + 1} / ${modalPages.length}`;
+        }
     } else {
-        // e.g. PDF
-        showFrame(primaryUrl);
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+        if (pageIndicator) pageIndicator.style.display = 'none';
     }
 }
 
-// make archives modal opener available to search.ts
+function modalPrevPage() {
+    if (modalPageIndex > 0) {
+        modalPageIndex--;
+        showCurrentModalPage();
+    }
+}
+
+function modalNextPage() {
+    if (modalPageIndex < modalPages.length - 1) {
+        modalPageIndex++;
+        showCurrentModalPage();
+    }
+}
+
+function showCurrentModalPage() {
+    if (!modalPages.length) return;
+
+    const img = document.getElementById('docImage') as HTMLImageElement | null;
+    const imgViewport = document.querySelector('.doc-image-viewport') as HTMLDivElement | null;
+    const loaderEl = document.getElementById('docLoader') as HTMLDivElement | null;
+
+    if (!img || !imgViewport) return;
+
+    const url = modalPages[modalPageIndex];
+
+    loaderEl?.classList.remove('is-hidden');
+    img.classList.remove('is-loaded');
+
+    const pre = new Image();
+    pre.onload = () => {
+        img.src = url;
+        loaderEl?.classList.add('is-hidden');
+        requestAnimationFrame(() => img.classList.add('is-loaded'));
+        updateModalNavButtons();
+    };
+    pre.onerror = () => {
+        console.error('[modal] Failed to load image', url);
+        loaderEl?.classList.add('is-hidden');
+    };
+    pre.src = url;
+}
+
 (window as any).__AA_openDocumentForMeta = (meta: Doc) => openDocumentForMeta(meta);
 
-let modalCloseBound = false;
+/* ===========================
+   Card selection
+   =========================== */
 
-function bindModalCloseOnce() {
-    if (modalCloseBound) return;
-    modalCloseBound = true;
+function selectSprite(spr: SpriteWithMeta) {
+    const meta = (spr as any).meta as Doc | undefined;
 
-    const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
-    const closeBtn   = document.getElementById('docPreviewClose') as HTMLButtonElement | null;
-    const frame      = document.getElementById('docFrame') as HTMLIFrameElement | null;
-    const img        = document.getElementById('docImage') as HTMLImageElement | null;
+    console.log('[selectSprite] Called with meta:', meta);
 
-    if (!docPreview) return;
-
-    const close = () => {
-        if (frame) frame.src = 'about:blank';
-        if (img) img.src = '';
-        resetZoom();
-        docPreview.style.display = 'none';
-        docPreview.setAttribute('aria-hidden', 'true');
-    };
-
-    closeBtn?.addEventListener('click', (e) => { e.preventDefault(); close(); });
-
-    docPreview.addEventListener('click', (e) => {
-        if (e.target === docPreview) close(); // backdrop close
-    });
-
-    window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && docPreview.style.display !== 'none') close();
-    });
-}
-
-
-function selectSprite(spr: THREE.Sprite) {
-    // ... selection ring stuff unchanged ...
-
-    const meta = (spr as any).meta as Doc;
-
-    // text + thumb
-    cardHeader.textContent = displayTitleFor(meta);
-    cardTitle.textContent  = meta.description || displayTitleFor(meta);
-    cardYear.textContent   = meta.year != null ? String(meta.year) : '—';
-    cardRepo.textContent   = meta.repo ?? '—';
-    cardThumb.src          = meta.iconURL; // always safe thumbnail
-
-    // --- figure out what to show in the modal ---
-    const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
-    const frame      = document.getElementById('docFrame') as HTMLIFrameElement | null;
-
-    cardLink.href = '#';
-    cardLink.textContent = meta.iconURL ? 'Open document' : 'No document available';
-
-    cardLink.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (!meta.iconURL) return false;  // nothing to show
-
-        void openDocumentForMeta(meta);   // fire and forget
-        return false;
-    };
-
-    // Close button (safe to re-assign each time)
-    const closeBtn = document.getElementById('docPreviewClose') as HTMLButtonElement | null;
-    if (closeBtn && docPreview) {
-        closeBtn.onclick = () => {
-            const frameEl = document.getElementById('docFrame') as HTMLIFrameElement | null;
-            if (frameEl) frameEl.src = 'about:blank';
-            resetZoom();
-            docPreview.style.display = 'none';
-        };
+    if (!meta) {
+        console.error('[selectSprite] No meta on sprite');
+        return;
     }
 
-    // tags
+    if (!infoCard || !infoThumb || !infoTitle || !infoYear || !infoRepo || !tagChips || !infoLink) {
+        console.error('[selectSprite] Missing DOM elements:', {
+            infoCard: !!infoCard,
+            infoThumb: !!infoThumb,
+            infoTitle: !!infoTitle,
+            infoYear: !!infoYear,
+            infoRepo: !!infoRepo,
+            tagChips: !!tagChips,
+            infoLink: !!infoLink,
+        });
+        return;
+    }
+
+    const titleForUi = displayTitleFor(meta);
+
+    console.log('[selectSprite] Setting texts:', {
+        header: titleForUi,
+        description: meta.description || titleForUi,
+        year: meta.year,
+        repo: meta.repo
+    });
+
+    // Header should be the document title
+    if (infoHeader) infoHeader.textContent = titleForUi;
+
+    // Item Description should be the description (or fall back to title if no description)
+    infoTitle.textContent = meta.description || titleForUi;
+
+    infoYear.textContent = meta.year != null ? String(meta.year) : '—';
+    infoRepo.textContent = meta.repo ?? 'Briscoe Center';
+
+    infoThumb.src = meta.iconURL || '';
+    infoThumb.alt = titleForUi;
+
     tagChips.innerHTML = '';
-    (meta.tags ?? []).forEach((t) => {
+    (meta.tags || []).forEach((t) => {
         const chip = document.createElement('span');
         chip.className = 'chip';
         chip.textContent = String(t);
         tagChips.appendChild(chip);
     });
 
-    card.style.display = 'block';
+    infoLink.href = '#';
+    infoLink.removeAttribute('target');
+    infoLink.textContent = 'Open Document';
+    infoLink.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        void openDocumentForMeta(meta);
+        return false;
+    };
+
+    console.log('[selectSprite] Setting infoCard display to block');
+    infoCard.style.display = 'block';
+
+    // Force a reflow to ensure the style change takes effect
+    void infoCard.offsetHeight;
 }
 
-function clearSelection() {
-    if (selectionRing) {
-        scene.remove(selectionRing);
-        selectionRing.geometry.dispose();
-        (selectionRing.material as THREE.Material).dispose();
-        selectionRing = null;
-    }
-    selectedObj = null;
-    card.style.display = 'none';
-}
+/* ===========================
+   Scene setup
+   =========================== */
 
-function clearHighlight() {
-    activePeriodKey = null;
-    updateVisibility();
-    updatePeriodCardUI(null);
-}
+function setupThree() {
+    scene = new THREE.Scene();
 
-function applyHighlightForPeriod(key: keyof typeof PERIODS) {
-    activePeriodKey = key;
-    updateVisibility();
-    updatePeriodCardUI(key);
-}
+    camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 6000);
+    camera.position.z = 900;
 
+    renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        powerPreference: 'high-performance',
+    });
 
-// Selected state on the chips
-function updatePeriodCardUI(key: keyof typeof PERIODS | null) {
-    const chips = Array.from(
-        document.querySelectorAll<HTMLAnchorElement>('.timeline-cards .chip')
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    // @ts-ignore
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    const appEl = document.getElementById('app') as HTMLElement | null;
+    if (!appEl) throw new Error('Missing #app');
+    appEl.style.position = 'relative';
+
+    const c = renderer.domElement;
+    c.style.position = 'fixed';
+    c.style.inset = '0';
+    c.style.width = '100vw';
+    c.style.height = '100vh';
+    c.style.zIndex = '1';
+    c.style.pointerEvents = 'auto';
+    appEl.prepend(c);
+
+    if (hoverTip) hoverTip.style.zIndex = '20';
+    if (hintEl) hintEl.style.zIndex = '20';
+
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    controls.addEventListener('start', () => hideHint());
+    controls.addEventListener('change', () => {
+        lastInteraction = Date.now();
+        autoRotate = false;
+    });
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Hover tooltip
+    window.addEventListener('mousemove', (e) => {
+        if (!hoverTip) return;
+
+        const rect = renderer.domElement.getBoundingClientRect();
+        const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        const ny = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+        mouse.set(nx, ny);
+
+        camera.updateMatrixWorld(true);
+        raycaster.setFromCamera(mouse, camera);
+
+        const hits = raycaster.intersectObjects(sprites, false);
+        if (hits.length) {
+            const spr = hits[0].object as SpriteWithMeta;
+            hoverTip.style.display = 'block';
+            hoverTip.style.left = `${e.clientX + 12}px`;
+            hoverTip.style.top = `${e.clientY + 12}px`;
+            hoverTip.textContent = spr.meta ? displayTitleFor(spr.meta) : '—';
+        } else {
+            hoverTip.style.display = 'none';
+        }
+    });
+
+    // Click handling with proper detection
+    let downX = 0;
+    let downY = 0;
+    let downAt = 0;
+
+    window.addEventListener(
+        'pointerdown',
+        (e) => {
+            downX = e.clientX;
+            downY = e.clientY;
+            downAt = Date.now();
+        },
+        { capture: true }
     );
-    chips.forEach((chip) => {
-        const k = (chip.getAttribute('href') || '').replace(/^#/, '');
-        if (key && k === key) chip.classList.add('is-active');
-        else chip.classList.remove('is-active');
+
+    window.addEventListener(
+        'click',
+        (e) => {
+            console.log('[click] Event fired');
+
+            // Don't pick if modal is open
+            const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
+            const modalOpen = docPreview && docPreview.getAttribute('aria-hidden') !== 'true';
+
+            if (modalOpen) {
+                console.log('[click] Modal is open, ignoring');
+                return;
+            }
+
+            // Don't pick if clicking UI elements
+            const target = e.target as HTMLElement | null;
+            const uiElement = target?.closest('#infoCard, #searchPanel, header.site-header, nav, footer');
+            if (uiElement) {
+                console.log('[click] Clicked UI element, ignoring:', uiElement);
+                return;
+            }
+
+            const dx = Math.abs(e.clientX - downX);
+            const dy = Math.abs(e.clientY - downY);
+            const dt = Date.now() - downAt;
+            const isClick = dx < 6 && dy < 6 && dt < 450;
+
+            console.log('[click] Movement check - dx:', dx, 'dy:', dy, 'dt:', dt, 'isClick:', isClick);
+
+            if (!isClick) return;
+
+            const rect = renderer.domElement.getBoundingClientRect();
+            const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            const ny = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+            mouse.set(nx, ny);
+
+            console.log('[click] Mouse coords:', { x: nx, y: ny });
+
+            camera.updateMatrixWorld(true);
+            raycaster.setFromCamera(mouse, camera);
+
+            const hits = raycaster.intersectObjects(sprites, false);
+
+            console.log('[click] sprites.length =', sprites.length, 'hits.length =', hits.length);
+
+            if (!hits.length) {
+                if (infoCard) infoCard.style.display = 'none';
+                return;
+            }
+
+            console.log('[click] Hit sprite, calling selectSprite');
+            selectSprite(hits[0].object as SpriteWithMeta);
+        },
+        { capture: true }
+    );
+
+    setTimeout(() => hideHint(), 3500);
+}
+
+/* ===========================
+   Search + chips wiring
+   =========================== */
+
+function wireSearchUI() {
+    const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
+    const searchClear = document.getElementById('searchClear') as HTMLButtonElement | null;
+
+    searchInput?.addEventListener('input', () => {
+        searchQuery = searchInput.value || '';
+        updateVisibility();
+    });
+
+    searchClear?.addEventListener('click', () => {
+        if (searchInput) searchInput.value = '';
+        searchQuery = '';
+        updateVisibility();
+    });
+
+    searchInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (searchInput) searchInput.value = '';
+            searchQuery = '';
+            updateVisibility();
+            (document.activeElement as HTMLElement | null)?.blur();
+        }
+    });
+}
+
+function wirePeriodChips() {
+    const periodEls = Array.from(document.querySelectorAll<HTMLAnchorElement>('.timeline-cards .chip'));
+    periodEls.forEach((el) => {
+        el.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            const key = (el.getAttribute('href') || '').replace(/^#/, '') as keyof typeof PERIODS;
+            if (!PERIODS[key]) return;
+
+            if (activePeriodKey === key) clearHighlight();
+            else applyHighlightForPeriod(key);
+        });
+    });
+
+    window.addEventListener('hashchange', () => {
+        const key = (location.hash || '').replace(/^#/, '') as keyof typeof PERIODS;
+        if (PERIODS[key]) applyHighlightForPeriod(key);
+        else clearHighlight();
     });
 }
 
 /* ===========================
    Animate
    =========================== */
+
 function animate() {
     requestAnimationFrame(animate);
 
     if (autoRotate || Date.now() - lastInteraction > 4000) {
-        // gentle 3D turn for parallax
         group.rotation.y += 0.0005;
-    }
-
-    if (selectionRing && selectedObj) {
-        selectedObj.updateWorldMatrix(true, false);
-        selectedObj.getWorldPosition(_worldPos);
-        selectionRing.position.copy(_worldPos);
-        selectionRing.quaternion.copy(camera.quaternion);
-        camera.getWorldDirection(_camDir).normalize();
-        selectionRing.position.addScaledVector(_camDir, 2);
     }
 
     controls.update();
     renderer.render(scene, camera);
 }
 
-function hideHint() {
-    hintEl?.classList.add('hint--hide');
+/* ===========================
+   Boot
+   =========================== */
+
+async function init() {
+    initDomRefs();
+    bindModalCloseOnce();
+    setupThree();
+
+    await loadArchiveData();
+
+    const positions = positionsRingTime(DOCS, {
+        R: 300,
+        zRange: 280,
+        angleJitter: 0.26,
+        timeAngle: 0.2,
+        timeRadial: 36,
+        liftY: 0,
+    });
+
+    buildSprites(positions, DOCS);
+
+    wireSearchUI();
+    wirePeriodChips();
+    updateVisibility();
+
+    // ESC: close card else clear highlight (modal ESC handled in bindModalCloseOnce)
+    window.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+
+        const docPreview = document.getElementById('docPreview') as HTMLDivElement | null;
+        const modalOpen = docPreview && docPreview.getAttribute('aria-hidden') !== 'true';
+        if (modalOpen) return;
+
+        const isCardVisible = !!infoCard && infoCard.style.display !== 'none';
+        if (isCardVisible) infoCard!.style.display = 'none';
+        else clearHighlight();
+    });
+
+    animate();
 }
 
-const path = location.pathname;
-const isSearch = path.endsWith('/search.html') || path.includes('/pages/search.html');
+function boot() {
+    const path = location.pathname;
+    const isSearch = path.endsWith('/search.html') || path.includes('/pages/search.html');
 
-if (!isSearch) {
-    init(); // only the archive/three page
+    if (isSearch) {
+        // Load search module instead
+        (async () => {
+            const mod = await import('./search');
+            await mod.initSearch();
+        })().catch((err) => {
+            console.error('[boot] Search init error:', err);
+        });
+    } else {
+        // Normal archive page with Three.js
+        init().catch((err) => {
+            console.error('[boot] Error:', err);
+        });
+    }
+}
+
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', boot, { once: true });
 } else {
-    (async () => {
-        const mod = await import('./search');
-        await mod.initSearch();
-    })().catch(console.error);
+    boot();
 }
-
