@@ -76,15 +76,27 @@ h2 {
 }
 
 .lede {
-    color: #d4d4d4;
-    font-weight: 190; /* Lighter font weight */
-    letter-spacing: 0.07em;  /* Adjust spacing */
-    line-height: 1.5;
-    font-size: 20px;
+    color: #f0ebe4;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    line-height: 1.7;
+    font-size: 19px;
 }
 
 p {
-    text-align: justify;
+    margin: 0 0 1em 0;
+    line-height: 1.7;
+    color: #f0ebe4;
+}
+
+.lede + .lede {
+    margin-top: 1em;
+}
+
+/* Better contrast for secondary text */
+.lm-item__body,
+.lm-text {
+    color: #ccc;
 }
 
 /* --- Utility boxes --- */
@@ -284,21 +296,24 @@ a.lightbox-link {
     filter: sepia(58%) brightness(.96) saturate(0.9);
 }
 
-/* CCI logo - first row, spans both columns, larger */
-.site-footer .logos img:nth-child(2) {
-    grid-column: 1 / -1; /* span both columns */
+/* CCI - first row, spans both columns */
+.site-footer .logos > :nth-child(1) {
+    grid-column: 1 / -1;
     grid-row: 1;
+}
+.site-footer .logos > :nth-child(1) img,
+.site-footer .logos > img:nth-child(1) {
     height: 86px;
 }
 
 /* AADS - second row, left column */
-.site-footer .logos img:nth-child(1) {
+.site-footer .logos > :nth-child(2) {
     grid-column: 1;
     grid-row: 2;
 }
 
 /* NHPRC - second row, right column */
-.site-footer .logos img:nth-child(3) {
+.site-footer .logos > :nth-child(3) {
     grid-column: 2;
     grid-row: 2;
 }
@@ -323,16 +338,19 @@ a.lightbox-link {
     }
 
     /* Reset grid positioning for mobile - stack vertically */
-    .site-footer .logos img:nth-child(1),
-    .site-footer .logos img:nth-child(2),
-    .site-footer .logos img:nth-child(3) {
+    .site-footer .logos > :nth-child(1),
+    .site-footer .logos > :nth-child(2),
+    .site-footer .logos > :nth-child(3) {
         grid-column: 1;
         grid-row: auto;
+    }
+    .site-footer .logos img {
         height: 55px;
     }
 
     /* CCI still slightly bigger on mobile */
-    .site-footer .logos img:nth-child(2) {
+    .site-footer .logos > :nth-child(1) img,
+    .site-footer .logos > img:nth-child(1) {
         height: 65px;
     }
 }
@@ -642,6 +660,151 @@ a.lightbox-link {
 .help { font-size:12px; color:#aaa; margin-top:6px; }
 .btn { display:inline-block; padding:10px 14px; background:#fff; color:#111; border-radius:8px; text-decoration:none; font-weight:800; }
 .notice { margin-top:10px; color:#D2C7B1; }
+
+/* ========================
+   Learn More Accordion
+   ======================== */
+
+.learn-more {
+    margin-top: 40px;
+    margin-bottom: 40px;
+}
+
+.learn-more__heading {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 24px;
+    color: #fff;
+}
+
+/* Main category groups */
+.lm-group {
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.lm-group:last-of-type {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.lm-group__summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #d4d4d4;
+    cursor: pointer;
+    list-style: none;
+}
+
+.lm-group__summary::-webkit-details-marker {
+    display: none;
+}
+
+.lm-group__summary::after {
+    content: '›';
+    font-size: 1.5rem;
+    font-weight: 300;
+    color: #888;
+    transition: transform 0.25s ease;
+    transform: rotate(90deg);
+}
+
+.lm-group[open] > .lm-group__summary::after {
+    transform: rotate(-90deg);
+}
+
+.lm-group__body {
+    padding: 0 0 30px 0;
+}
+
+/* Nested items within a group */
+.lm-item {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    margin-left: 0;
+}
+
+.lm-item:first-of-type {
+    border-top: none;
+}
+
+.lm-item__summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 0 18px 20px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #c0c0c0;
+    cursor: pointer;
+    list-style: none;
+    transition: color 0.2s ease;
+}
+
+.lm-item__summary:hover {
+    color: #fff;
+}
+
+.lm-item__summary::-webkit-details-marker {
+    display: none;
+}
+
+.lm-item__summary::after {
+    content: '›';
+    font-size: 1.2rem;
+    font-weight: 300;
+    color: #666;
+    transition: transform 0.25s ease;
+}
+
+.lm-item[open] > .lm-item__summary::after {
+    transform: rotate(90deg);
+}
+
+.lm-item__body {
+    padding: 10px 20px 20px 20px;
+    color: #ccc;
+    font-size: 0.95rem;
+    line-height: 1.7;
+}
+
+.lm-text {
+    margin: 0 0 20px 0;
+}
+
+.lm-subhead {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #999;
+    margin: 20px 0 10px 0;
+}
+
+.lm-list {
+    margin: 0;
+    padding-left: 20px;
+    color: #bbb;
+}
+
+.lm-list li {
+    margin-bottom: 6px;
+}
+
+.lm-list em {
+    font-style: italic;
+    color: #ccc;
+}
+
+.lm-footnote {
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 20px;
+    font-style: italic;
+}
 
 /* Scene wrapper so footer never overlays canvas */
 .scene-wrap {
