@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Archives — Archiving Activism</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/layout.css" />
 </head>
@@ -69,6 +70,10 @@
   <!-- 3D scene — wrapped to keep footer off the canvas -->
   <section class="scene-wrap">
     <div id="app">
+      <div id="archiveLoader" class="archive-loader">
+        <div class="archive-loader__spinner"></div>
+        <div class="archive-loader__text">Loading archives...</div>
+      </div>
       <div id="hint" class="hint">Drag to rotate • Scroll to zoom</div>
       <div id="hoverTip" class="hover-tip" style="display:none;"></div>
 

@@ -662,6 +662,51 @@ a.lightbox-link {
 .notice { margin-top:10px; color:#D2C7B1; }
 
 /* ========================
+   Archive Loading Indicator
+   ======================== */
+
+.archive-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(26, 22, 18, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.archive-loader.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.archive-loader__spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid rgba(255, 255, 255, 0.15);
+    border-top-color: var(--coral);
+    border-radius: 50%;
+    animation: archive-spin 1s linear infinite;
+}
+
+@keyframes archive-spin {
+    to { transform: rotate(360deg); }
+}
+
+.archive-loader__text {
+    margin-top: 16px;
+    font-size: 16px;
+    color: #d4d4d4;
+    letter-spacing: 0.05em;
+}
+
+/* ========================
    Learn More Accordion
    ======================== */
 
