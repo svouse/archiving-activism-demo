@@ -707,6 +707,40 @@ a.lightbox-link {
 }
 
 /* ========================
+   Coming Soon Section
+   ======================== */
+
+.coming-soon {
+    text-align: center;
+    padding: 48px 24px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    margin-top: 16px;
+}
+
+.coming-soon__text {
+    font-size: 1.1rem;
+    color: #ccc;
+    max-width: 500px;
+    margin: 0 auto 16px;
+    line-height: 1.6;
+}
+
+.coming-soon__label {
+    display: inline-block;
+    padding: 8px 20px;
+    background: rgba(255, 127, 80, 0.15);
+    border: 1px solid rgba(255, 127, 80, 0.3);
+    border-radius: 20px;
+    color: var(--coral);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+/* ========================
    Learn More Accordion
    ======================== */
 
