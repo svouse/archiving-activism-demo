@@ -1177,6 +1177,13 @@ function animate() {
    Boot
    =========================== */
 
+function hideArchiveLoader() {
+    const loader = document.getElementById('archiveLoader');
+    if (loader) {
+        loader.classList.add('is-hidden');
+    }
+}
+
 async function init() {
     initDomRefs();
     bindModalCloseOnce();
@@ -1194,6 +1201,9 @@ async function init() {
     });
 
     buildSprites(positions, DOCS);
+
+    // Hide the loading indicator once sprites are built
+    hideArchiveLoader();
 
     wireSearchUI();
     wirePeriodChips();
