@@ -1177,10 +1177,17 @@ function animate() {
    Boot
    =========================== */
 
+let loaderShownAt = Date.now();
+
 function hideArchiveLoader() {
     const loader = document.getElementById('archiveLoader');
     if (loader) {
-        loader.classList.add('is-hidden');
+        // Ensure loader is visible for at least 500ms so it doesn't flash
+        const elapsed = Date.now() - loaderShownAt;
+        const delay = Math.max(0, 500 - elapsed);
+        setTimeout(() => {
+            loader.classList.add('is-hidden');
+        }, delay);
     }
 }
 

@@ -8,7 +8,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/layout.css" />
-  <script type="module" crossorigin src="/assets/main-Clm0kncy.js"></script>
+  <script type="module" crossorigin src="/assets/main-CWoFuCph.js"></script>
 </head>
 <body>
 
@@ -71,9 +71,10 @@
   <!-- 3D scene — wrapped to keep footer off the canvas -->
   <section class="scene-wrap">
     <div id="app">
-      <div id="archiveLoader" class="archive-loader">
-        <div class="archive-loader__spinner"></div>
-        <div class="archive-loader__text">Loading archives...</div>
+      <div id="archiveLoader" class="archive-loader" style="position:fixed;inset:0;background:rgba(26,22,18,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;">
+        <div class="archive-loader__spinner" style="width:48px;height:48px;border:3px solid rgba(255,255,255,0.15);border-top-color:coral;border-radius:50%;animation:spin 1s linear infinite;"></div>
+        <div class="archive-loader__text" style="margin-top:16px;color:#d4d4d4;">Loading archives...</div>
+        <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
       </div>
       <div id="hint" class="hint">Drag to rotate • Scroll to zoom</div>
       <div id="hoverTip" class="hover-tip" style="display:none;"></div>
@@ -102,9 +103,10 @@
 </main>
 
 <div id="docPreview" class="doc-preview" aria-hidden="true">
+    <!-- close button - outside inner so it's viewport-relative -->
+    <button id="docPreviewClose" class="doc-preview__close" type="button">×</button>
+
     <div class="doc-preview__inner">
-        <!-- close button -->
-        <button id="docPreviewClose" class="doc-preview__close" type="button">×</button>
 
         <!-- Previous button -->
         <button id="docPrevBtn" class="doc-nav doc-nav--prev" type="button" style="display:none">‹</button>

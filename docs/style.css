@@ -85,6 +85,8 @@ nav a:hover{ color:#fff; }
   background:var(--orange); color:#2b1a11;
   border-radius:14px; border:2px solid var(--tan);
   box-shadow:0 10px 40px rgba(0,0,0,0.45);
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
 }
 .info-card__header{
   background:var(--tan); color:var(--ink);
@@ -507,8 +509,11 @@ canvas { z-index: 0 !important; }
   display: flex; flex-wrap: wrap; gap: 8px;
 }
 
-/* Make sure the bottom info card is above canvas too */
-.info-card{ z-index: 25; }
+/* Make sure the bottom info card is above canvas and toolbar */
+.info-card{ z-index: 5000; }
+
+/* Lower toolbar z-index so info card appears above */
+.archive-toolbar{ z-index: 20 !important; }
 
 @media (max-width: 900px){
   .archive-toolbar{ gap: 10px; padding: 8px 10px; }
@@ -606,8 +611,7 @@ canvas { z-index: 0 !important; }
 }
 
 /* (Optional) If you ever boosted the title row a lot, you can cap it here */
-.page-title-row,
-.archive-toolbar{
+.page-title-row{
   z-index: 300;            /* still above canvas, below header/dropdown */
 }
 
@@ -701,7 +705,7 @@ canvas { z-index: 0 !important; }
   justify-content: center;
   background: rgba(0, 0, 0, 0.92);
   backdrop-filter: blur(4px);
-  z-index: 2000;
+  z-index: 10000; /* Above everything including nav */
 }
 
 /* Modal wrapper - includes space for nav buttons */
@@ -764,20 +768,20 @@ canvas { z-index: 0 !important; }
   border-radius: 8px;
 }
 
-/* Close button - top right corner */
+/* Close button - fixed to viewport top right */
 .doc-preview__close {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 2010;
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10010;
 
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border: none;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.8);
   color: #fff;
   border-radius: 50%;
-  font-size: 20px;
+  font-size: 24px;
   line-height: 1;
   cursor: pointer;
 
@@ -786,11 +790,13 @@ canvas { z-index: 0 !important; }
   justify-content: center;
 
   transition: background 0.2s ease, transform 0.1s ease;
+  border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .doc-preview__close:hover {
-  background: rgba(255, 50, 50, 0.85);
-  transform: scale(1.05);
+  background: rgba(255, 50, 50, 0.9);
+  transform: scale(1.08);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 /* Navigation buttons - positioned OUTSIDE the image */
@@ -888,8 +894,14 @@ canvas { z-index: 0 !important; }
 /* Mobile responsive adjustments */
 @media (max-width: 900px) {
   .doc-preview__inner {
-    width: 100vw;
-    padding: 0 60px;
+    width: calc(100vw - 100px);
+    height: auto;
+    max-height: 85vh;
+    padding: 0;
+  }
+
+  .doc-image-viewport {
+    max-height: 80vh;
   }
 
   .doc-nav {
@@ -907,7 +919,8 @@ canvas { z-index: 0 !important; }
   }
 
   .doc-image {
-    max-height: 75vh;
+    max-height: 78vh;
+    max-width: calc(100vw - 120px);
   }
 
   .doc-frame {
@@ -917,7 +930,18 @@ canvas { z-index: 0 !important; }
 
 @media (max-width: 600px) {
   .doc-preview__inner {
-    padding: 0 50px;
+    width: calc(100vw - 20px);
+    max-height: 90vh;
+  }
+
+  .doc-image-viewport {
+    max-height: 85vh;
+    border-radius: 4px;
+  }
+
+  .doc-image {
+    max-height: 82vh;
+    max-width: calc(100vw - 40px);
   }
 
   .doc-nav {
@@ -926,9 +950,25 @@ canvas { z-index: 0 !important; }
     font-size: 20px;
   }
 
+  .doc-nav--prev {
+    left: 4px;
+  }
+
+  .doc-nav--next {
+    right: 4px;
+  }
+
   .doc-page-indicator {
     font-size: 12px;
     padding: 6px 12px;
     bottom: 12px;
+  }
+
+  .doc-preview__close {
+    top: 12px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+    font-size: 22px;
   }
 }
