@@ -411,38 +411,43 @@ a.lightbox-link {
     background: var(--tan);      /* your existing beige */
     color: #1b1208;              /* chocolate text */
     border-radius: 16px;
-    padding: 24px 32px;
-    margin: 40px;/* inner padding only */
+    padding: 32px 40px;
+    margin: 0;                   /* full width within container */
+    box-sizing: border-box;
+    overflow: hidden;            /* contain the grid */
 }
 
 /* Acknowledgements grid — sample-image style */
-/* 5-col desktop grid (keeps everything consistent) */
+/* Responsive grid that fills available space */
 .ack-grid{
     display: grid;
-    grid-template-columns: repeat(5, minmax(210px, 1fr));
-    gap: 22px 34px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 24px 32px;
     margin-top: 18px;
     justify-items: center;
+    width: 100%;
 }
 
-/* Make every ack “card” a consistent width (prevents funders from looking wider) */
+/* Make every ack "card" flexible within the grid */
 .ack-item{
     text-align: center;
-    width: 240px;          /* tune 220–260 */
-    max-width: 240px;
+    width: 100%;
+    max-width: 280px;
 }
 
-/* Funders: put 2 items in the centered columns (2 and 4), but keep same width */
-.ack-group--funders + .ack-item--funder{            /* first funder */
-    grid-column: 2;
-}
-.ack-group--funders + .ack-item--funder + .ack-item--funder{ /* second funder */
-    grid-column: 4;
+/* Funders row: centered flex container spanning full width */
+.ack-funder-row {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    flex-wrap: wrap;
 }
 
-/* Center the last Community Partners entry (Stephanie) in the middle column */
-.ack-item--center{
-    grid-column: 3;
+/* Center the last Community Partners item */
+.ack-item--center {
+    grid-column: 1 / -1;
+    justify-self: center;
 }
 
 /* Section headers centered */
@@ -452,18 +457,10 @@ a.lightbox-link {
 }
 
 
-/* Responsive steps (same layout, fewer columns) */
-@media (max-width: 1180px){
-    .ack-grid{ grid-template-columns: repeat(4, minmax(210px, 1fr)); }
-}
-@media (max-width: 980px){
-    .ack-grid{ grid-template-columns: repeat(3, minmax(210px, 1fr)); }
-}
-@media (max-width: 740px){
-    .ack-grid{ grid-template-columns: repeat(2, minmax(210px, 1fr)); }
-}
+/* Responsive: single column on small screens */
 @media (max-width: 520px){
     .ack-grid{ grid-template-columns: 1fr; }
+    .section-panel { padding: 24px 20px; }
 }
 
 
@@ -477,8 +474,8 @@ a.lightbox-link {
 
 /* allows multi-line roles / sub-lists */
 .ack-subtitle {
-    font-size: 13px;
-    line-height: 1.35;
+    font-size: 15px;
+    line-height: 1.4;
     opacity: 0.95;
     margin-bottom: 6px;
 }
@@ -486,7 +483,7 @@ a.lightbox-link {
 /* link line like the sample */
 .ack-link {
     display: inline-block;
-    font-size: 13px;
+    font-size: 15px;
     text-decoration: underline;
     color: #3a2211;
     opacity: 0.95;
@@ -500,19 +497,9 @@ a.lightbox-link {
     grid
 }
 
-/* optional tiny note */
+/* optional tiny note - now unused */
 .ack-note {
-    margin-top: 6px;
-    font-size: 12px;
-    opacity: 0.75;
-}
-
-/* tighten on small screens */
-@media (max-width: 600px) {
-    .ack-grid {
-        grid-template-columns: 1fr;
-        gap: 16px;
-    }
+    display: none;
 }
 
 
