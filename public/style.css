@@ -760,6 +760,26 @@ canvas { z-index: 0 !important; }
   opacity: 1;
 }
 
+/* Zoom toggle cursor */
+.doc-image-viewport {
+  cursor: zoom-in;
+}
+
+/* Zoomed state - full size with scroll */
+.doc-image-viewport.is-zoomed {
+  cursor: zoom-out;
+  overflow: auto;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.doc-image-viewport.is-zoomed .doc-image {
+  max-width: none;
+  max-height: none;
+  width: auto;
+  height: auto;
+}
+
 /* PDF frame */
 .doc-frame {
   width: 100%;
