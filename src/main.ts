@@ -153,17 +153,24 @@ function bindModalCloseOnce() {
     const nextBtn = document.getElementById('docNextBtn') as HTMLButtonElement | null;
     const frame = document.getElementById('docFrame') as HTMLIFrameElement | null;
     const img = document.getElementById('docImage') as HTMLImageElement | null;
+    const imgViewport = document.querySelector('.doc-image-viewport') as HTMLDivElement | null;
 
     if (!docPreview) {
         console.error('[modal] #docPreview not found');
         return;
     }
 
+    // Reset zoom state
+    const resetZoom = () => {
+        imgViewport?.classList.remove('is-zoomed');
+    };
+
     const close = () => {
         if (frame) frame.src = 'about:blank';
         if (img) img.src = '';
         modalPages = [];
         modalPageIndex = 0;
+        resetZoom();
         docPreview.style.display = 'none';
         docPreview.setAttribute('aria-hidden', 'true');
     };
@@ -189,6 +196,13 @@ function bindModalCloseOnce() {
 
     docPreview.addEventListener('click', (e) => {
         if (e.target === docPreview) close();
+    });
+
+    // Click image to toggle zoom
+    img?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        imgViewport?.classList.toggle('is-zoomed');
     });
 
     window.addEventListener('keydown', (e) => {
@@ -866,6 +880,9 @@ function showCurrentModalPage() {
     if (!img || !imgViewport) return;
 
     const url = modalPages[modalPageIndex];
+
+    // Reset zoom when changing pages
+    imgViewport.classList.remove('is-zoomed');
 
     loaderEl?.classList.remove('is-hidden');
     img.classList.remove('is-loaded');
