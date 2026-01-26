@@ -638,7 +638,7 @@ canvas { z-index: 0 !important; }
   margin: 0 auto;
   padding: 0 16px;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 10px;
   justify-content: center;
 }
@@ -675,13 +675,20 @@ canvas { z-index: 0 !important; }
   outline: 2px solid rgba(124,169,130,.55);
 }
 
-/* Compact on tiny screens but still centered */
+/* Compact on smaller screens but still centered */
+@media (max-width: 768px){
+  .chip-btn{
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+}
+
 @media (max-width: 520px){
   .band { padding: 14px 0; }
   .chip-btn{
-    padding: 9px 12px;
-    font-size: 12px;
-    border-radius: 12px;
+    padding: 6px 8px;
+    font-size: 11px;
+    border-radius: 10px;
   }
 }
 
