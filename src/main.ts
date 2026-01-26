@@ -42,6 +42,7 @@ type RenderRecord = ArchiveRecord & {
     previewKind: 'images' | 'pdf' | 'none';
     previewUrls: string[];
     iconUrl: string;
+    thumbUrl: string;
 };
 
 type Doc = {
@@ -52,6 +53,7 @@ type Doc = {
     description: string | null;
     tags: string[];
     iconURL: string;
+    thumbURL: string;
     schoolPrimary: string | null;
 };
 
@@ -82,6 +84,13 @@ const HIRES_BASE_CANDIDATES = [
     '/hires/',
     '../hires/',
     '../../hires/',
+];
+
+const THUMBS_BASE_CANDIDATES = [
+    BASE + 'thumbs/',
+    '/thumbs/',
+    '../thumbs/',
+    '../../thumbs/',
 ];
 
 const PERIODS: Record<'precursors' | 'thick' | 'today', [number, number]> = {
@@ -260,6 +269,7 @@ let BY_ID: Record<string, ArchiveRecord> = {};
 let RENDER_BY_ID: Record<string, RenderRecord> = {};
 let DOCS: Doc[] = [];
 let HIRES_BASE = BASE + 'hires/';
+let THUMBS_BASE = BASE + 'thumbs/';
 
 let searchQuery = '';
 
@@ -377,6 +387,13 @@ function hiresFilenameToUrl(filename: string): string {
     return HIRES_BASE + encodePath(clean);
 }
 
+function thumbFilenameToUrl(filename: string): string {
+    const clean = normalizeFilename(filename);
+    // Thumbnails are WebP format
+    const webpName = clean.replace(/\.(jpg|jpeg|png|gif|tiff?)$/i, '.webp');
+    return THUMBS_BASE + encodePath(webpName);
+}
+
 function isImageUrl(url: string): boolean {
     const clean = String(url || '').split(/[?#]/)[0];
     return IMAGE_EXT_RE.test(clean);
@@ -464,6 +481,10 @@ function buildRenderRecords(byId: Record<string, ArchiveRecord>): RenderRecord[]
 
         const iconUrl = localImageUrls[0] || '';
 
+        // Generate thumbnail URL from the first local image
+        const firstLocalImage = hires.find(h => !isHttpUrl(h) && IMAGE_EXT_RE.test(h));
+        const thumbUrl = firstLocalImage ? thumbFilenameToUrl(firstLocalImage) : '';
+
         out.push({
             ...r0,
             id: idNum,
@@ -482,6 +503,7 @@ function buildRenderRecords(byId: Record<string, ArchiveRecord>): RenderRecord[]
             previewKind,
             previewUrls,
             iconUrl,
+            thumbUrl,
         });
     }
 
@@ -498,6 +520,7 @@ function buildDocsFromRender(renderList: RenderRecord[]): Doc[] {
         description: r.description ?? null,
         tags: r.tags ?? [],
         iconURL: r.iconUrl || '',
+        thumbURL: r.thumbUrl || '',
         schoolPrimary: (r as any).schoolPrimary ?? null,
     }));
 }
@@ -517,19 +540,23 @@ async function loadArchiveData() {
     const anyLocal = renderList
         .flatMap((r) => r.hires || [])
         .map((h) => String(h || '').trim())
-        .find((h) => h && !isHttpUrl(h));
+        .find((h) => h && !isHttpUrl(h) && IMAGE_EXT_RE.test(h));
     if (anyLocal) {
         HIRES_BASE = await pickFirstExistingBase(HIRES_BASE_CANDIDATES, normalizeFilename(anyLocal));
+        // For thumbnails, convert to webp extension
+        const thumbTestFile = normalizeFilename(anyLocal).replace(/\.(jpg|jpeg|png|gif|tiff?)$/i, '.webp');
+        THUMBS_BASE = await pickFirstExistingBase(THUMBS_BASE_CANDIDATES, thumbTestFile);
     } else {
         HIRES_BASE = HIRES_BASE_CANDIDATES[0] || (BASE + 'hires/');
+        THUMBS_BASE = THUMBS_BASE_CANDIDATES[0] || (BASE + 'thumbs/');
     }
 
     const renderList2 = buildRenderRecords(BY_ID);
     RENDER_BY_ID = Object.fromEntries(renderList2.map((r) => [String(r.id), r]));
     DOCS = buildDocsFromRender(renderList2);
 
-    console.log('[data] BY_ID keys =', Object.keys(BY_ID).length, 'DOCS =', DOCS.length, 'HIRES_BASE =', HIRES_BASE);
-    console.log('[data] First 3 DOCS:', DOCS.slice(0, 3).map(d => ({ id: d.id, title: d.title, iconURL: d.iconURL })));
+    console.log('[data] BY_ID keys =', Object.keys(BY_ID).length, 'DOCS =', DOCS.length, 'HIRES_BASE =', HIRES_BASE, 'THUMBS_BASE =', THUMBS_BASE);
+    console.log('[data] First 3 DOCS:', DOCS.slice(0, 3).map(d => ({ id: d.id, title: d.title, thumbURL: d.thumbURL, iconURL: d.iconURL })));
 }
 
 /* ===========================
@@ -666,13 +693,15 @@ function buildSprites(positions: THREE.Vector3[], docs: Doc[]) {
             group.add(sprite);
         };
 
-        if (!doc.iconURL) {
+        // Use thumbnail for sprite (much smaller, faster loading)
+        const spriteUrl = doc.thumbURL || doc.iconURL;
+        if (!spriteUrl) {
             makeSprite(new THREE.SpriteMaterial({ color: 0x666666, transparent: true, opacity: 0.9 }));
             return;
         }
 
         loader.load(
-            doc.iconURL,
+            spriteUrl,
             (texture) => {
                 // @ts-ignore
                 texture.colorSpace = THREE.SRGBColorSpace;
@@ -692,7 +721,7 @@ function buildSprites(positions: THREE.Vector3[], docs: Doc[]) {
             },
             undefined,
             (err) => {
-                console.error('Failed to load icon', doc.iconURL, err);
+                console.error('Failed to load sprite', spriteUrl, err);
                 makeSprite(new THREE.SpriteMaterial({ color: 0x666666, transparent: true, opacity: 0.9 }));
             }
         );
