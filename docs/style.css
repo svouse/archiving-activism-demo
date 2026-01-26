@@ -647,10 +647,10 @@ canvas { z-index: 0 !important; }
 .chip-btn{
   display: inline-flex;
   align-items: center;
-  gap: 20px;
-  padding: 10px 18px;
+  gap: 8px;
+  padding: 11px 18px;
   border-radius: 14px;
-  font-size: 20px;
+  font-size: 18px;
   text-decoration: none;
   border: 1px solid rgba(255,255,255,.20);
   transition: transform .15s ease, box-shadow .15s ease, background .2s ease, filter .2s ease;
