@@ -24,9 +24,62 @@
             letter-spacing: 1px;
             margin: 0;
         }
+        .access {
+            position: fixed;
+            top: 16px;
+            right: 20px;
+            z-index: 20;
+            font-size: 13px;
+        }
+        .access summary {
+            color: #999;
+            cursor: pointer;
+            list-style: none;
+        }
+        .access summary::-webkit-details-marker { display: none; }
+        .access summary:hover { color: #f0ebe4; }
+        .access[open] summary { color: #f0ebe4; }
+        .access form {
+            margin-top: 8px;
+            display: flex;
+            gap: 6px;
+        }
+        .access input[type="password"] {
+            font-size: 13px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--tan);
+            background: #1b1310;
+            color: #f0ebe4;
+            width: 140px;
+        }
+        .access button {
+            font-size: 13px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            background: var(--coral);
+            color: #1b1310;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .access .error {
+            color: var(--coral);
+            margin-top: 6px;
+            display: none;
+        }
     </style>
 </head>
 <body>
+
+<details class="access">
+    <summary>Access code</summary>
+    <form id="gateForm">
+        <input type="password" id="gatePw" placeholder="Code" autocomplete="off" />
+        <button type="submit">Enter</button>
+    </form>
+    <p class="error" id="gateError">Incorrect code.</p>
+</details>
 
 <div class="container announce">
     <h1>Full Site Opens Fall 2026!</h1>
@@ -84,6 +137,25 @@
             index = (index + 1) % frames.length;
             frames[index].classList.add('is-visible');
         }, 6000);
+    })();
+</script>
+
+<script>
+    (function () {
+        var ACCESS_CODE = 'freedom-schools';
+        var form = document.getElementById('gateForm');
+        var input = document.getElementById('gatePw');
+        var error = document.getElementById('gateError');
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (input.value.trim().toLowerCase() === ACCESS_CODE) {
+                try { localStorage.setItem('aa_access', 'granted'); } catch (e) {}
+                location.href = '/';
+            } else {
+                error.style.display = 'block';
+                input.select();
+            }
+        });
     })();
 </script>
 
