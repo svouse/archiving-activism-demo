@@ -2,5 +2,5 @@
   try {
     if (localStorage.getItem('aa_access') === 'granted') return;
   } catch (e) {}
-  location.replace('/coming-soon.html');
+  location.replace('/enter.html');
 })();
