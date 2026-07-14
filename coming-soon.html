@@ -1,44 +1,36 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <script src="/gate.js"></script>
     <base href="/" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>Archiving Activism — Home</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Archiving Activism — Coming Soon</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/layout.css" />
+    <style>
+        .announce {
+            text-align: center;
+            margin: 40px auto 0;
+        }
+        .announce h1 {
+            color: var(--coral);
+            font-size: 40px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            margin: 0;
+        }
+    </style>
 </head>
 <body>
-<header class="site-header">
-    <div class="brand"><a href="/index.html">ARCHIVING ACTIVISM</a></div>
 
-    <nav aria-label="Primary">
-        <ul class="nav-list">
-            <!-- ABOUT: no dropdown; goes to The Project -->
-            <li class="nav-item">
-                <a href="/pages/about-the-project.html">ABOUT</a>
-            </li>
-
-            <!-- ARCHIVES dropdown stays -->
-            <li class="nav-item has-dropdown">
-                <a href="/pages/archives.html">
-                    ARCHIVES <span class="caret" aria-hidden="true"></span>
-                </a>
-                <div class="dropdown" role="menu" aria-label="Archive menu">
-                    <a href="/pages/search.html" role="menuitem">Search</a>
-                </div>
-            </li>
-
-            <li class="nav-item"><a href="/pages/freedom-schools.html">FREEDOM SCHOOLS</a></li>
-            <li class="nav-item"><a href="/pages/resources-tools.html">RESOURCES &amp; TOOLS</a></li>
-        </ul>
-    </nav>
-</header>
+<div class="container announce">
+    <h1>Full Site Opens Fall 2026!</h1>
+</div>
 
 <main>
     <section class="container hero">
@@ -47,17 +39,6 @@
             <p class="lede">
                 Created by Dr. Ashanté M. Reese and Dr. Ashley Farmer (UT-Austin), ARCHIVING ACTIVISM is a digital humanities project that foregrounds student activism in Austin. As an open-access digital archive, this space exists to make information about how primarily student-led movements changed local universities, the city, and beyond. We gathered materials from disparate archives, community organizations, and individuals to create this publicly accessible platform to support research, curriculum design, course development, and student service learning. As an interactive website, users and audiences alike will be able to examine the experiences, strategies, wins, and disappointments of students and allies from the 1940s until the present. ARCHIVING ACTIVISM presents only a sliver of the hard work, determination, and dedication of activists who fought to make the university, city, and world better. We hope it is a useful tool for learning and teaching obscured histories and a guide for budding activists who are looking for examples of how to be the change they want to see.
             </p>
-
-            <!-- Single row of buttons -->
-            <div class="band band--precursors">
-                <div class="band__content">
-                    <a class="chip-btn is-precursors" href="https://www.ashleydfarmer.com/" target="_blank" rel="noopener">About Dr. Farmer</a>
-                    <a class="chip-btn is-precursors" href="https://www.amreese.com/" target="_blank" rel="noopener">About Dr. Reese</a>
-                    <a class="chip-btn is-thick" href="./pages/about-the-project.html">The Project</a>
-                    <a class="chip-btn is-thick" href="./pages/archives.html">Explore Archives</a>
-                </div>
-            </div>
-
         </div>
 
         <div class="hero-image">
@@ -89,36 +70,6 @@
 
 <script>
     (function(){
-        const gallery = document.getElementById('homeGallery');
-        if(!gallery) return;
-        const imgs = Array.from(gallery.querySelectorAll('img'));
-        let i = 0;
-        setInterval(()=>{
-            imgs[i].classList.remove('active');
-            i = (i + 1) % imgs.length;
-            imgs[i].classList.add('active');
-        }, 4500);
-    })();
-
-</script>
-
-<script>
-    (function(){
-        // existing homeGallery script
-        const gallery = document.getElementById('homeGallery');
-        if(!gallery) return;
-        const imgs = Array.from(gallery.querySelectorAll('img'));
-        let i = 0;
-        setInterval(()=>{
-            imgs[i].classList.remove('active');
-            i = (i + 1) % imgs.length;
-            imgs[i].classList.add('active');
-        }, 4500);
-    })();
-</script>
-
-<script>
-    (function(){
         const hero = document.querySelector('.hero-image');
         if (!hero) return;
 
@@ -126,18 +77,15 @@
         if (frames.length <= 1) return;
 
         let index = 0;
-        frames[index].classList.add('is-visible'); // safety
+        frames[index].classList.add('is-visible');
 
         setInterval(() => {
             frames[index].classList.remove('is-visible');
             index = (index + 1) % frames.length;
             frames[index].classList.add('is-visible');
-        }, 6000); // 6s per image – adjust to taste
+        }, 6000);
     })();
 </script>
-
-<script type="module" src="/src/main.ts"></script>
-
 
 </body>
 </html>

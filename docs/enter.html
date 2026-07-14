@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Archiving Activism — Enter</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/layout.css" />
+  <style>
+    .gate-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 20px;
+    }
+    .gate-box { text-align: center; }
+    .gate-box h1 {
+      color: var(--coral);
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      margin-bottom: 24px;
+    }
+    .gate-box form {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .gate-box input[type="password"] {
+      font-size: 16px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 2px solid var(--tan);
+      background: #1b1310;
+      color: #f0ebe4;
+      width: 260px;
+    }
+    .gate-box button {
+      font-size: 16px;
+      padding: 10px 22px;
+      border-radius: 8px;
+      border: none;
+      background: var(--coral);
+      color: #1b1310;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .gate-box .error {
+      color: var(--coral);
+      margin-top: 16px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="gate-wrap">
+    <div class="gate-box">
+      <h1>ARCHIVING ACTIVISM</h1>
+      <form id="gateForm">
+        <input type="password" id="gatePw" placeholder="Enter access code" autocomplete="off" />
+        <button type="submit">Enter</button>
+      </form>
+      <p class="error" id="gateError">Incorrect code. Please try again.</p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var ACCESS_CODE = 'amber-tide-52';
+      var form = document.getElementById('gateForm');
+      var input = document.getElementById('gatePw');
+      var error = document.getElementById('gateError');
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (input.value.trim().toLowerCase() === ACCESS_CODE) {
+          try { localStorage.setItem('aa_access', 'granted'); } catch (e) {}
+          location.href = '/';
+        } else {
+          error.style.display = 'block';
+          input.select();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
