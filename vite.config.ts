@@ -11,6 +11,7 @@ export default defineConfig({
         index: resolve(__dirname, 'index.html'),
         archives: resolve(__dirname, 'pages/archives.html'),
         search: resolve(__dirname, 'pages/search.html'),
+        comingSoon: resolve(__dirname, 'coming-soon.html'),
       },
     },
   },
