@@ -58,11 +58,84 @@
 
   <section class="container section">
     <h2>Guides &amp; Templates</h2>
-    <div class="coming-soon">
-      <p class="coming-soon__text">We're developing resources to help you explore, research, and teach with our archives.</p>
-      <p class="coming-soon__label">Coming Soon</p>
-    </div>
+    <h3 class="lessons__heading">Lesson Plans</h3>
+    <ol class="lessons">
+      <li class="lesson-card" data-lesson="introduction-to-the-archive" data-title="Introduction to the Archive" data-pages="2">
+        <button type="button" class="lesson-card__preview" data-action="preview" aria-label="Preview Introduction to the Archive">
+          <img src="/lessons/introduction-to-the-archive-thumb.webp" alt="First page of the Introduction to the Archive lesson plan" width="480" height="621" loading="lazy" />
+        </button>
+        <p class="lesson-card__kicker">Lesson Plan 1</p>
+        <h3 class="lesson-card__title">Introduction to the Archive</h3>
+        <div class="lesson-card__actions">
+          <button type="button" class="lesson-btn" data-action="preview">Preview</button>
+          <a class="lesson-btn" href="/lessons/introduction-to-the-archive.pdf" download="Lesson Plan - Introduction to the Archive.pdf">Download</a>
+          <button type="button" class="lesson-btn" data-action="print">Print</button>
+        </div>
+      </li>
+      <li class="lesson-card" data-lesson="contextualizing-the-archive" data-title="Contextualizing the Archive" data-pages="2">
+        <button type="button" class="lesson-card__preview" data-action="preview" aria-label="Preview Contextualizing the Archive">
+          <img src="/lessons/contextualizing-the-archive-thumb.webp" alt="First page of the Contextualizing the Archive lesson plan" width="480" height="621" loading="lazy" />
+        </button>
+        <p class="lesson-card__kicker">Lesson Plan 2</p>
+        <h3 class="lesson-card__title">Contextualizing the Archive</h3>
+        <div class="lesson-card__actions">
+          <button type="button" class="lesson-btn" data-action="preview">Preview</button>
+          <a class="lesson-btn" href="/lessons/contextualizing-the-archive.pdf" download="Lesson Plan - Contextualizing the Archive.pdf">Download</a>
+          <button type="button" class="lesson-btn" data-action="print">Print</button>
+        </div>
+      </li>
+      <li class="lesson-card" data-lesson="organizing-sources" data-title="Organizing Sources" data-pages="2">
+        <button type="button" class="lesson-card__preview" data-action="preview" aria-label="Preview Organizing Sources">
+          <img src="/lessons/organizing-sources-thumb.webp" alt="First page of the Organizing Sources lesson plan" width="480" height="621" loading="lazy" />
+        </button>
+        <p class="lesson-card__kicker">Lesson Plan 3</p>
+        <h3 class="lesson-card__title">Organizing Sources</h3>
+        <div class="lesson-card__actions">
+          <button type="button" class="lesson-btn" data-action="preview">Preview</button>
+          <a class="lesson-btn" href="/lessons/organizing-sources.pdf" download="Lesson Plan - Organizing Sources.pdf">Download</a>
+          <button type="button" class="lesson-btn" data-action="print">Print</button>
+        </div>
+      </li>
+      <li class="lesson-card" data-lesson="historical-analysis" data-title="Historical Analysis" data-pages="2">
+        <button type="button" class="lesson-card__preview" data-action="preview" aria-label="Preview Historical Analysis">
+          <img src="/lessons/historical-analysis-thumb.webp" alt="First page of the Historical Analysis lesson plan" width="480" height="621" loading="lazy" />
+        </button>
+        <p class="lesson-card__kicker">Lesson Plan 4</p>
+        <h3 class="lesson-card__title">Historical Analysis</h3>
+        <div class="lesson-card__actions">
+          <button type="button" class="lesson-btn" data-action="preview">Preview</button>
+          <a class="lesson-btn" href="/lessons/historical-analysis.pdf" download="Lesson Plan - Historical Analysis.pdf">Download</a>
+          <button type="button" class="lesson-btn" data-action="print">Print</button>
+        </div>
+      </li>
+      <li class="lesson-card" data-lesson="writing-an-argument" data-title="Writing an Argument" data-pages="2">
+        <button type="button" class="lesson-card__preview" data-action="preview" aria-label="Preview Writing an Argument">
+          <img src="/lessons/writing-an-argument-thumb.webp" alt="First page of the Writing an Argument lesson plan" width="480" height="621" loading="lazy" />
+        </button>
+        <p class="lesson-card__kicker">Lesson Plan 5</p>
+        <h3 class="lesson-card__title">Writing an Argument</h3>
+        <div class="lesson-card__actions">
+          <button type="button" class="lesson-btn" data-action="preview">Preview</button>
+          <a class="lesson-btn" href="/lessons/writing-an-argument.pdf" download="Lesson Plan - Writing an Argument.pdf">Download</a>
+          <button type="button" class="lesson-btn" data-action="print">Print</button>
+        </div>
+      </li>
+    </ol>
   </section>
+
+  <!-- Lesson plan viewer (filled by script below) -->
+  <div class="lesson-viewer" id="lessonViewer" role="dialog" aria-modal="true" aria-labelledby="lessonViewerTitle" hidden>
+    <div class="lesson-viewer__bar">
+      <h2 class="lesson-viewer__title" id="lessonViewerTitle"></h2>
+      <div class="lesson-viewer__actions">
+        <a class="lesson-btn" id="lessonViewerPdf" href="#" target="_blank" rel="noopener">Open PDF</a>
+        <a class="lesson-btn" id="lessonViewerDownload" href="#" download>Download</a>
+        <button type="button" class="lesson-btn" id="lessonViewerPrint">Print</button>
+        <button type="button" class="lesson-btn lesson-btn--close" id="lessonViewerClose" aria-label="Close preview">&times;</button>
+      </div>
+    </div>
+    <div class="lesson-viewer__pages" id="lessonViewerPages"></div>
+  </div>
   <section class="container learn-more" aria-label="Learn more about">
     <h2 class="learn-more__heading">Learn More About…</h2>
 
@@ -674,5 +747,84 @@
   </div>
 </footer>
 
+<script>
+  // Lesson plan preview / print. Pages are pre-rendered images of each PDF,
+  // so preview and print look the same in every browser (including phones).
+  (function () {
+    var viewer = document.getElementById('lessonViewer');
+    var pagesEl = document.getElementById('lessonViewerPages');
+    var titleEl = document.getElementById('lessonViewerTitle');
+    var pdfLink = document.getElementById('lessonViewerPdf');
+    var dlLink = document.getElementById('lessonViewerDownload');
+    var lastFocus = null;
+
+    function fill(card) {
+      var slug = card.dataset.lesson, title = card.dataset.title;
+      var n = parseInt(card.dataset.pages, 10) || 1;
+      titleEl.textContent = 'Lesson Plan: ' + title;
+      pdfLink.href = '/lessons/' + slug + '.pdf';
+      dlLink.href = '/lessons/' + slug + '.pdf';
+      dlLink.setAttribute('download', 'Lesson Plan - ' + title + '.pdf');
+      pagesEl.innerHTML = '';
+      var imgs = [];
+      for (var i = 1; i <= n; i++) {
+        var img = new Image();
+        img.src = '/lessons/' + slug + '-' + i + '.webp';
+        img.alt = title + ' lesson plan, page ' + i + ' of ' + n;
+        img.width = 1275; img.height = 1649;
+        img.className = 'lesson-viewer__page';
+        pagesEl.appendChild(img);
+        imgs.push(img);
+      }
+      return imgs;
+    }
+
+    function open(card) {
+      lastFocus = document.activeElement;
+      fill(card);
+      viewer.hidden = false;
+      viewer.scrollTop = 0;
+      document.body.classList.add('lesson-viewer-open');
+      document.getElementById('lessonViewerClose').focus();
+    }
+
+    function close() {
+      viewer.hidden = true;
+      document.body.classList.remove('lesson-viewer-open');
+      if (lastFocus) lastFocus.focus();
+    }
+
+    function printPages(imgs) {
+      // Wait for every page image before opening the print dialog.
+      Promise.all(imgs.map(function (img) {
+        return img.complete ? Promise.resolve() : new Promise(function (r) { img.onload = img.onerror = r; });
+      })).then(function () {
+        document.body.classList.add('lesson-printing');
+        window.print();
+      });
+    }
+    window.addEventListener('afterprint', function () {
+      document.body.classList.remove('lesson-printing');
+    });
+
+    document.querySelectorAll('.lesson-card').forEach(function (card) {
+      card.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        if (btn.dataset.action === 'preview') open(card);
+        if (btn.dataset.action === 'print') printPages(fill(card));
+      });
+    });
+
+    document.getElementById('lessonViewerClose').addEventListener('click', close);
+    document.getElementById('lessonViewerPrint').addEventListener('click', function () {
+      printPages(Array.prototype.slice.call(pagesEl.querySelectorAll('img')));
+    });
+    viewer.addEventListener('click', function (e) { if (e.target === viewer) close(); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !viewer.hidden) close();
+    });
+  })();
+</script>
 </body>
 </html>
