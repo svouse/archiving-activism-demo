@@ -960,5 +960,36 @@
       "1988_SCC_acl_Local News Articles-074.jpg",
       "1988_SCC_acl_Local News Articles-075.jpg"
     ]
+  },
+  "59": {
+    "id": 59,
+    "title": "1992_QTBIPOC_acl_Gays Protest Military Policy",
+    "year": 1992,
+    "repository": "QTBIPOC",
+    "location": null,
+    "mediaType": "image",
+    "description": "documents student groups writing letter to Ann Richards to address discrimination",
+    "tags": [
+      "Direct Activism & Advocacy"
+    ],
+    "hires": [
+      "1992_QTBIPOC_acl_Gays Protest Military Policy-1.jpg"
+    ]
+  },
+  "60": {
+    "id": 60,
+    "title": "nd_QTBIPOC_acl_GLSA Support BSA Plan",
+    "year": "nd",
+    "repository": "QTBIPOC",
+    "location": null,
+    "mediaType": "image",
+    "description": "documents student advocacy through student organizations",
+    "tags": [
+      "Direct Activism & Advocacy",
+      "University-Based Politics"
+    ],
+    "hires": [
+      "nd_QTBIPOC_acl_GLSA Support BSA Plan-1.jpg"
+    ]
   }
 }
