@@ -320,7 +320,7 @@ async function fetchJsonFirst<T>(candidates: string[], label: string): Promise<{
     const errs: string[] = [];
     for (const url of candidates) {
         try {
-            const res = await fetch(url, { cache: 'no-store' });
+            const res = await fetch(url);
             if (!res.ok) {
                 errs.push(`${url} -> ${res.status}`);
                 continue;
@@ -333,19 +333,6 @@ async function fetchJsonFirst<T>(candidates: string[], label: string): Promise<{
         }
     }
     throw new Error(`[data] failed to load ${label}. Tried:\n- ${errs.join('\n- ')}`);
-}
-
-async function pickFirstExistingBase(candidates: string[], testFile: string): Promise<string> {
-    for (const base of candidates) {
-        const url = base + encodePath(testFile);
-        try {
-            const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-            if (res.ok) return base;
-        } catch {
-            // ignore
-        }
-    }
-    return candidates[0] || (BASE + 'hires/');
 }
 
 function cleanFileDisplay(name: string): string {
@@ -537,22 +524,10 @@ async function loadArchiveData() {
     RENDER_BY_ID = Object.fromEntries(renderList.map((r) => [String(r.id), r]));
     DOCS = buildDocsFromRender(renderList);
 
-    const anyLocal = renderList
-        .flatMap((r) => r.hires || [])
-        .map((h) => String(h || '').trim())
-        .find((h) => h && !isHttpUrl(h) && IMAGE_EXT_RE.test(h));
-    if (anyLocal) {
-        // For thumbnails, convert to webp extension
-        const thumbTestFile = normalizeFilename(anyLocal).replace(/\.(jpg|jpeg|png|gif|tiff?)$/i, '.webp');
-        // Probe both bases in parallel rather than back-to-back
-        [HIRES_BASE, THUMBS_BASE] = await Promise.all([
-            pickFirstExistingBase(HIRES_BASE_CANDIDATES, normalizeFilename(anyLocal)),
-            pickFirstExistingBase(THUMBS_BASE_CANDIDATES, thumbTestFile),
-        ]);
-    } else {
-        HIRES_BASE = HIRES_BASE_CANDIDATES[0] || (BASE + 'hires/');
-        THUMBS_BASE = THUMBS_BASE_CANDIDATES[0] || (BASE + 'thumbs/');
-    }
+    // Pages set <base href="/">, so every candidate resolves to the same folder;
+    // use the first directly instead of probing with extra round trips.
+    HIRES_BASE = HIRES_BASE_CANDIDATES[0] || (BASE + 'hires/');
+    THUMBS_BASE = THUMBS_BASE_CANDIDATES[0] || (BASE + 'thumbs/');
 
     const renderList2 = buildRenderRecords(BY_ID);
     RENDER_BY_ID = Object.fromEntries(renderList2.map((r) => [String(r.id), r]));
