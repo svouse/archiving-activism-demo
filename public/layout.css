@@ -472,13 +472,16 @@ a.lightbox-link {
     max-width: 240px;
 }
 
-/* Parenthetical sub-heading under a group heading, e.g. "(Project Team)" */
+/* Sub-heading within a group, e.g. "Project Staff" under People */
 .ack-subgroup {
     grid-column: 1 / -1;
     text-align: center;
     font-size: 0.85em;
     font-weight: 700;
-    margin: -8px 0 0;
+    margin: 16px 0 0;
+}
+.ack-group + .ack-subgroup {
+    margin-top: -8px;
 }
 
 /* Center the last Community Partners item */
@@ -491,6 +494,7 @@ a.lightbox-link {
 .ack-group{
     grid-column: 1 / -1;
     text-align: center;
+    text-transform: uppercase;
 }
 
 
