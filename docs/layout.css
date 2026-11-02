@@ -1109,16 +1109,8 @@ canvas {
     transform: scale(1.03);
 }
 
-.lesson-card__kicker {
-    margin: 14px 0 2px;
-    font-size: 0.75rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--coral);
-}
-
 .lesson-card__title {
-    margin: 0 0 12px;
+    margin: 14px 0 12px;
     font-size: 1.05rem;
     line-height: 1.3;
 }
