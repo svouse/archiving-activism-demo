@@ -542,10 +542,13 @@ async function loadArchiveData() {
         .map((h) => String(h || '').trim())
         .find((h) => h && !isHttpUrl(h) && IMAGE_EXT_RE.test(h));
     if (anyLocal) {
-        HIRES_BASE = await pickFirstExistingBase(HIRES_BASE_CANDIDATES, normalizeFilename(anyLocal));
         // For thumbnails, convert to webp extension
         const thumbTestFile = normalizeFilename(anyLocal).replace(/\.(jpg|jpeg|png|gif|tiff?)$/i, '.webp');
-        THUMBS_BASE = await pickFirstExistingBase(THUMBS_BASE_CANDIDATES, thumbTestFile);
+        // Probe both bases in parallel rather than back-to-back
+        [HIRES_BASE, THUMBS_BASE] = await Promise.all([
+            pickFirstExistingBase(HIRES_BASE_CANDIDATES, normalizeFilename(anyLocal)),
+            pickFirstExistingBase(THUMBS_BASE_CANDIDATES, thumbTestFile),
+        ]);
     } else {
         HIRES_BASE = HIRES_BASE_CANDIDATES[0] || (BASE + 'hires/');
         THUMBS_BASE = THUMBS_BASE_CANDIDATES[0] || (BASE + 'thumbs/');
@@ -1237,12 +1240,30 @@ function hideArchiveLoader() {
     }
 }
 
+function showArchiveLoadError() {
+    const loader = document.getElementById('archiveLoader');
+    if (!loader) return;
+    const spinner = loader.querySelector<HTMLElement>('.archive-loader__spinner');
+    const text = loader.querySelector<HTMLElement>('.archive-loader__text');
+    if (spinner) spinner.style.display = 'none';
+    if (text) {
+        text.textContent =
+            'The archive could not be displayed in this browser. Try reloading, or make sure hardware acceleration (WebGL) is turned on in your browser settings.';
+        text.style.maxWidth = '36em';
+        text.style.textAlign = 'center';
+        text.style.padding = '0 16px';
+    }
+}
+
 async function init() {
+    const t0 = performance.now();
     initDomRefs();
     bindModalCloseOnce();
     setupThree();
+    console.log('[timing] three ready', Math.round(performance.now() - t0), 'ms');
 
     await loadArchiveData();
+    console.log('[timing] data loaded', Math.round(performance.now() - t0), 'ms');
 
     const positions = positionsRingTime(DOCS, {
         R: 300,
@@ -1294,6 +1315,7 @@ function boot() {
         // Normal archive page with Three.js
         init().catch((err) => {
             console.error('[boot] Error:', err);
+            showArchiveLoadError();
         });
     }
 }
