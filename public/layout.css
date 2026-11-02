@@ -1231,3 +1231,35 @@ body.lesson-viewer-open { overflow: hidden; }
         break-after: auto;
     }
 }
+
+/* ========================
+   Phone / narrow-screen fit
+   (keeps the header menu and page margins inside the screen)
+   ======================== */
+
+@media (max-width: 900px) {
+    .container { padding: 0 32px; }
+}
+
+@media (max-width: 720px) {
+    .site-header {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px 0;
+        padding: 12px 16px;
+    }
+    .site-header .brand { text-align: center; }
+    .site-header .brand a {
+        margin-right: 0;
+        font-size: 26px;
+    }
+    .site-header nav { width: 100%; justify-content: center; }
+    .nav-list {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 6px 16px;
+    }
+    .nav-item a { font-size: 14px; }
+    .site-header nav a { margin: 0; }
+    .container { padding: 0 16px; margin: 28px auto; }
+}
