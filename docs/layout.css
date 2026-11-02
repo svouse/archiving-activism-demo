@@ -444,6 +444,43 @@ a.lightbox-link {
     flex-wrap: wrap;
 }
 
+/* Funder cards size to their content so long lines don't wrap */
+.ack-item--funder {
+    width: auto;
+    max-width: none;
+}
+.ack-item--funder .ack-title,
+.ack-item--funder .ack-subtitle {
+    white-space: nowrap;
+}
+@media (max-width: 720px){
+    .ack-item--funder .ack-title,
+    .ack-item--funder .ack-subtitle { white-space: normal; }
+}
+
+/* Full-width centered row (UT-Austin colleagues, community partners) */
+.ack-row {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 24px 32px;
+    width: 100%;
+}
+.ack-row .ack-item {
+    flex: 1 1 180px;
+    max-width: 240px;
+}
+
+/* Parenthetical sub-heading under a group heading, e.g. "(Project Team)" */
+.ack-subgroup {
+    grid-column: 1 / -1;
+    text-align: center;
+    font-size: 0.85em;
+    font-weight: 700;
+    margin: -8px 0 0;
+}
+
 /* Center the last Community Partners item */
 .ack-item--center {
     grid-column: 1 / -1;
