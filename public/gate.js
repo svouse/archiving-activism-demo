@@ -1,6 +1,2 @@
-(function () {
-  try {
-    if (localStorage.getItem('aa_access') === 'granted') return;
-  } catch (e) {}
-  location.replace('/coming-soon.html');
-})();
+// The site is now public. Kept as an empty file so any cached page that
+// still references it loads without errors.
